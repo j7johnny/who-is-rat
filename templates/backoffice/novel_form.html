@@ -1,0 +1,112 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="secondary-button" href="{% url 'backoffice:novel-list' %}">回到小說列表</a>
+{% if novel %}
+    <a class="primary-button" href="{% url 'backoffice:chapter-create' %}?novel={{ novel.id }}">新增章節</a>
+{% endif %}
+{% endblock %}
+
+{% block manage_content %}
+<section class="manage-grid manage-grid--two">
+    <form method="post" class="manage-panel">
+        {% csrf_token %}
+        <div class="section-heading">
+            <h3>{% if novel %}小說資料{% else %}新增小說{% endif %}</h3>
+            <p class="subtle">建立小說後可新增章節並做背景發布。</p>
+        </div>
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label class="field">
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                {{ field.errors }}
+            </label>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" class="primary-button">{% if novel %}更新小說{% else %}建立小說{% endif %}</button>
+        </div>
+    </form>
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>章節列表</h3>
+            <p class="subtle">點擊背景發布後，按鈕會立即改為排程中避免重複送出。</p>
+        </div>
+        {% if novel %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>排序</th>
+                            <th>章節</th>
+                            <th>狀態</th>
+                            <th>版本</th>
+                            <th>動作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for chapter in chapters %}
+                            {% with job=chapter.publish_job %}
+                            <tr>
+                                <td>{{ chapter.sort_order }}</td>
+                                <td>
+                                    <strong>{{ chapter.title }}</strong>
+                                    {% if job %}
+                                        <p class="subtle">發布中：{{ job.step_label|default:"處理中" }} / {{ job.progress_percent }}%</p>
+                                    {% endif %}
+                                </td>
+                                <td>{{ chapter.get_status_display }}</td>
+                                <td>{% if chapter.current_version %}v{{ chapter.current_version.version_number }}{% else %}尚未發布{% endif %}</td>
+                                <td class="actions-cell">
+                                    <a class="secondary-button" href="{% url 'backoffice:chapter-detail' chapter.id %}">編輯</a>
+                                    <form method="post" action="{% url 'backoffice:chapter-publish' chapter.id %}" class="js-chapter-publish-form">
+                                        {% csrf_token %}
+                                        <button
+                                            type="submit"
+                                            class="primary-button js-chapter-publish-button"
+                                            {% if job %}disabled aria-disabled="true"{% endif %}
+                                        >
+                                            {% if job %}排程中...{% else %}背景發布{% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="5">目前沒有章節</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="subtle">先建立小說後再新增章節。</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    const forms = document.querySelectorAll(".js-chapter-publish-form");
+    forms.forEach((form) => {
+        form.addEventListener("submit", (event) => {
+            if (form.dataset.submitted === "1") {
+                event.preventDefault();
+                return;
+            }
+            form.dataset.submitted = "1";
+            const button = form.querySelector(".js-chapter-publish-button");
+            if (button) {
+                button.disabled = true;
+                button.textContent = "排程中...";
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

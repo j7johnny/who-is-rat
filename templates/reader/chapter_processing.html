@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ chapter.title }} | CatchingRat{% endblock %}
+{% block body_class %}page-manual-loading{% endblock %}
+
+{% block content %}
+<section class="stack reader-layout">
+    <div class="chapter-hero">
+        <div>
+            <p class="eyebrow">{{ chapter.novel.title }}</p>
+            <h2>{{ chapter.title }}</h2>
+        </div>
+    </div>
+
+    <section class="reader-notice reader-notice--warning reader-notice--strong" aria-live="polite">
+        <strong>本章節正在背景發布，暫時無法閱讀</strong>
+        <p>系統正在重新產生基底圖與閱讀圖片。請等待處理完成後再開啟。</p>
+        <dl class="meta-list">
+            <div>
+                <dt>目前狀態</dt>
+                <dd>{{ publish_job.get_status_display }}</dd>
+            </div>
+            <div>
+                <dt>目前進度</dt>
+                <dd>{{ publish_job.progress_percent }}%</dd>
+            </div>
+            {% if publish_job.step_label %}
+                <div>
+                    <dt>目前步驟</dt>
+                    <dd>{{ publish_job.step_label }}</dd>
+                </div>
+            {% endif %}
+        </dl>
+    </section>
+
+    <nav class="chapter-nav chapter-nav--bottom" aria-label="章節導航">
+        <a class="secondary-button" href="{{ novel_detail_url }}">回到本書章節列表</a>
+        <a class="secondary-button" href="{{ library_url }}">回到書庫</a>
+    </nav>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (window.CatchingRat && typeof window.CatchingRat.hideLoading === "function") {
+            window.CatchingRat.hideLoading();
+        }
+    });
+</script>
+{% endblock %}

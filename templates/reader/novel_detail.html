@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ novel.title }} | CatchingRat{% endblock %}
+
+{% block content %}
+<section class="stack">
+    <div class="chapter-hero">
+        <div>
+            <p class="eyebrow">章節列表</p>
+            <h2>{{ novel.title }}</h2>
+            {% if novel.description %}
+                <p class="subtle">{{ novel.description }}</p>
+            {% endif %}
+        </div>
+        <a href="{% url 'reader:library' %}" class="secondary-button">回到書庫</a>
+    </div>
+
+    {% if has_processing_chapters %}
+        <section class="reader-notice reader-notice--warning" aria-live="polite">
+            <strong>本小說目前有章節正在背景發布</strong>
+            <p>共有 {{ processing_chapter_count }} 個章節正在處理中。處理完成前暫時無法閱讀，請稍後再試。</p>
+        </section>
+    {% endif %}
+
+    <div class="chapter-list">
+        {% for entry in chapter_entries %}
+            {% if entry.publish_job %}
+                <div class="chapter-link chapter-link--disabled" aria-disabled="true">
+                    <span class="chapter-index">{{ entry.chapter.sort_order|stringformat:"02d" }}</span>
+                    <span class="chapter-link__content">
+                        <strong>{{ entry.chapter.title }}</strong>
+                        <small class="subtle">
+                            背景發布中，暫時無法閱讀。{{ entry.publish_job.get_status_display }}
+                            / {{ entry.publish_job.progress_percent }}%
+                            {% if entry.publish_job.step_label %}/ {{ entry.publish_job.step_label }}{% endif %}
+                        </small>
+                    </span>
+                    <span class="status-pill">處理中</span>
+                </div>
+            {% else %}
+                <a href="{% url 'reader:chapter-detail' entry.chapter.id %}" class="chapter-link">
+                    <span class="chapter-index">{{ entry.chapter.sort_order|stringformat:"02d" }}</span>
+                    <span class="chapter-link__content">
+                        <strong>{{ entry.chapter.title }}</strong>
+                    </span>
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

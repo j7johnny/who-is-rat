@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}登入 | CatchingRat{% endblock %}
+
+{% block content %}
+<section class="stack">
+    <div>
+        <p class="eyebrow">封閉式閱讀入口</p>
+        <h2>登入閱讀</h2>
+        <p class="subtle">僅限管理員建立的閱讀者與管理員帳號登入，系統會記錄閱讀與浮水印追查資訊。</p>
+    </div>
+    <form method="post" class="form-card">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <label class="field">
+            <span>{{ form.username.label }}</span>
+            {{ form.username }}
+            {{ form.username.errors }}
+        </label>
+        <label class="field">
+            <span>{{ form.password.label }}</span>
+            {{ form.password }}
+            {{ form.password.errors }}
+        </label>
+        <button type="submit" class="primary-button">登入</button>
+    </form>
+</section>
+{% endblock %}

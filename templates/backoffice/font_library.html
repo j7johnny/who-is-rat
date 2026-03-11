@@ -1,0 +1,61 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="secondary-button" href="{% url 'backoffice:anti-ocr-list' %}">回 anti7ocr 設定</a>
+{% endblock %}
+
+{% block manage_content %}
+<section class="manage-grid manage-grid--two">
+    <form method="post" enctype="multipart/form-data" class="manage-panel">
+        {% csrf_token %}
+        <div class="section-heading">
+            <h3>上傳自訂字體</h3>
+            <p class="subtle">上傳後會直接加入 anti7ocr 可用字體來源，示範圖片與正式發布都會使用。</p>
+        </div>
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label class="field">
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                {{ field.errors }}
+            </label>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" class="primary-button">上傳字體</button>
+        </div>
+    </form>
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>已上傳字體</h3>
+            <p class="subtle">可在這裡啟用、停用或刪除字體。</p>
+        </div>
+        <div class="list-stack">
+            {% for font in fonts %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ font.name }}</strong>
+                        <p class="subtle">{{ font.font_file.name }}</p>
+                    </div>
+                    <div class="actions-cell">
+                        <span class="status-pill {% if font.is_active %}is-success{% endif %}">
+                            {% if font.is_active %}啟用中{% else %}停用{% endif %}
+                        </span>
+                        <form method="post" action="{% url 'backoffice:font-toggle' font.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="secondary-button">{% if font.is_active %}停用{% else %}啟用{% endif %}</button>
+                        </form>
+                        <form method="post" action="{% url 'backoffice:font-delete' font.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="secondary-button">刪除</button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="subtle">目前還沒有自訂字體。</p>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

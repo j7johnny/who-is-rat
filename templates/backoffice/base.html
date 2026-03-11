@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Who-Is-Rat 管理後台{% endblock %}
+{% block body_class %}backoffice-page{% endblock %}
+{% block main_class %}content-card--wide{% endblock %}
+
+{% block content %}
+<section class="stack">
+    <header class="manage-hero">
+        <div>
+            <p class="eyebrow">Friendly Backoffice</p>
+            <h2>{{ page_title }}</h2>
+            <p class="subtle">{{ page_subtitle }}</p>
+        </div>
+        <div class="manage-hero__actions">
+            {% block hero_actions %}{% endblock %}
+        </div>
+    </header>
+
+    <nav class="manage-tabs" aria-label="後台功能選單">
+        <a class="{% if manage_section == 'dashboard' %}active{% endif %}" href="{% url 'backoffice:dashboard' %}">儀表板</a>
+        <a class="{% if manage_section == 'readers' %}active{% endif %}" href="{% url 'backoffice:reader-list' %}">閱讀者管理</a>
+        <a class="{% if manage_section == 'novels' %}active{% endif %}" href="{% url 'backoffice:novel-list' %}">小說與章節</a>
+        <a class="{% if manage_section == 'settings' %}active{% endif %}" href="{% url 'backoffice:anti-ocr-list' %}">Anti-OCR 設定</a>
+        <a class="{% if manage_section == 'tools' %}active{% endif %}" href="{% url 'backoffice:watermark-extract' %}">浮水印工具</a>
+        <a href="/admin/">進階 Django admin</a>
+    </nav>
+
+    {% block manage_content %}{% endblock %}
+</section>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="secondary-button" href="{% url 'backoffice:reader-list' %}">回閱讀者列表</a>
+{% endblock %}
+
+{% block manage_content %}
+<form method="post" class="manage-grid manage-grid--two">
+    {% csrf_token %}
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>帳號資訊</h3>
+            <p class="subtle">閱讀者不需要自行註冊，這裡由管理者直接建立與維護。</p>
+        </div>
+        {{ account_form.non_field_errors }}
+        {% for field in account_form %}
+            <label class="field">
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                {{ field.errors }}
+            </label>
+        {% endfor %}
+    </section>
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>授權設定</h3>
+            <p class="subtle">可混合使用全站、指定小說與指定章節授權。</p>
+        </div>
+        {{ access_form.non_field_errors }}
+        <div class="grant-block">
+            <label class="checkbox-line">
+                {{ access_form.grant_full_site }}
+                <span>{{ access_form.grant_full_site.label }}</span>
+            </label>
+            <p class="field-help">{{ access_form.grant_full_site.help_text }}</p>
+            {{ access_form.grant_full_site.errors }}
+        </div>
+        <div class="grant-block">
+            <h4>{{ access_form.novels.label }}</h4>
+            <p class="field-help">{{ access_form.novels.help_text }}</p>
+            <div class="checkbox-list">{{ access_form.novels }}</div>
+            {{ access_form.novels.errors }}
+        </div>
+        <div class="grant-block">
+            <h4>{{ access_form.chapters.label }}</h4>
+            <p class="field-help">{{ access_form.chapters.help_text }}</p>
+            <div class="checkbox-list checkbox-list--chapters">{{ access_form.chapters }}</div>
+            {{ access_form.chapters.errors }}
+        </div>
+    </section>
+
+    <div class="form-actions form-actions--full">
+        <button type="submit" class="primary-button">
+            {% if reader_obj %}儲存閱讀者設定{% else %}建立閱讀者並套用授權{% endif %}
+        </button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}{{ chapter.title }} | CatchingRat{% endblock %}
+{% block body_class %}page-manual-loading{% endblock %}
+{% block main_class %}content-card--reader{% endblock %}
+
+{% block content %}
+<section class="stack reader-layout">
+    <div class="chapter-hero">
+        <div>
+            <p class="eyebrow">{{ chapter.novel.title }}</p>
+            <h2>{{ chapter.title }}</h2>
+        </div>
+        <div class="device-switches">
+            <a class="secondary-button {% if device_profile == 'desktop' %}active{% endif %}" href="{{ desktop_switch_url }}">桌機版</a>
+            <a class="secondary-button {% if device_profile == 'mobile' %}active{% endif %}" href="{{ mobile_switch_url }}">手機版</a>
+        </div>
+    </div>
+
+    <nav class="chapter-nav" aria-label="章節導覽">
+        {% if previous_chapter %}
+            <a class="secondary-button" href="{% url 'reader:chapter-detail' previous_chapter.id %}">上一章</a>
+        {% else %}
+            <span class="secondary-button is-disabled">上一章</span>
+        {% endif %}
+        <a class="secondary-button" href="{{ novel_detail_url }}">回章節列表</a>
+        {% if next_chapter %}
+            <a class="secondary-button" href="{% url 'reader:chapter-detail' next_chapter.id %}">下一章</a>
+        {% else %}
+            <span class="secondary-button is-disabled">下一章</span>
+        {% endif %}
+    </nav>
+
+    <div class="reader-stream" aria-label="chapter pages" data-reader-stream></div>
+    <div class="reader-sentinel" aria-hidden="true" data-reader-sentinel></div>
+    <div class="chapter-progress" aria-live="polite" data-chapter-progress>
+        <div class="chapter-progress__spinner"></div>
+        <p class="chapter-progress__text" data-chapter-progress-text>章節內容載入中…</p>
+    </div>
+
+    <nav class="chapter-nav chapter-nav--bottom" aria-label="章節導覽">
+        {% if previous_chapter %}
+            <a class="secondary-button" href="{% url 'reader:chapter-detail' previous_chapter.id %}">上一章</a>
+        {% else %}
+            <span class="secondary-button is-disabled">上一章</span>
+        {% endif %}
+        <a class="secondary-button" href="{{ novel_detail_url }}">回章節列表</a>
+        {% if next_chapter %}
+            <a class="secondary-button" href="{% url 'reader:chapter-detail' next_chapter.id %}">下一章</a>
+        {% else %}
+            <span class="secondary-button is-disabled">下一章</span>
+        {% endif %}
+    </nav>
+</section>
+
+{{ page_assets|json_script:"chapter-page-assets" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const stream = document.querySelector("[data-reader-stream]");
+        const sentinel = document.querySelector("[data-reader-sentinel]");
+        const progress = document.querySelector("[data-chapter-progress]");
+        const progressText = document.querySelector("[data-chapter-progress-text]");
+        const pageAssets = JSON.parse(document.getElementById("chapter-page-assets").textContent);
+        const initialBatchSize = 4;
+        const batchSize = 4;
+
+        let renderedCount = 0;
+        let loadedCount = 0;
+        let navigationStarted = false;
+        let loadingHidden = false;
+        let pumpScheduled = false;
+
+        const hidePageLoading = function () {
+            if (loadingHidden || !window.CatchingRat || typeof window.CatchingRat.hideLoading !== "function") {
+                return;
+            }
+            loadingHidden = true;
+            window.CatchingRat.hideLoading();
+        };
+
+        const updateProgress = function () {
+            if (!progress || !progressText) {
+                return;
+            }
+
+            const total = pageAssets.length;
+            if (total === 0) {
+                progress.hidden = true;
+                hidePageLoading();
+                return;
+            }
+
+            const renderedPending = total - renderedCount;
+            const loadedPending = renderedCount - loadedCount;
+            progress.hidden = false;
+
+            if (renderedPending > 0) {
+                progressText.textContent = "本章尚未載入完成，向下捲動時會繼續載入。（已顯示 " + renderedCount + " / " + total + " 張）";
+                return;
+            }
+
+            if (loadedPending > 0) {
+                progressText.textContent = "圖片載入中…（已完成 " + loadedCount + " / " + total + " 張）";
+                return;
+            }
+
+            progress.hidden = true;
+        };
+
+        const isNearBottom = function () {
+            const threshold = Math.max(window.innerHeight * 1.25, 800);
+            return window.scrollY + window.innerHeight + threshold >= document.documentElement.scrollHeight;
+        };
+
+        const renderNextBatch = function () {
+            if (!stream || renderedCount >= pageAssets.length) {
+                updateProgress();
+                return false;
+            }
+
+            const limit = Math.min(renderedCount + batchSize, pageAssets.length);
+            const fragment = document.createDocumentFragment();
+            for (let index = renderedCount; index < limit; index += 1) {
+                const asset = pageAssets[index];
+                const shell = document.createElement("div");
+                shell.className = "reader-page-shell";
+
+                const image = document.createElement("img");
+                image.className = "reader-page";
+                image.alt = "第 " + (index + 1) + " 張";
+                image.decoding = "async";
+                image.loading = index < initialBatchSize ? "eager" : "lazy";
+                image.draggable = false;
+                image.dataset.pageIndex = String(index + 1);
+                image.width = asset.width;
+                image.height = asset.height;
+                image.src = asset.url;
+                image.addEventListener("load", function () {
+                    if (image.dataset.settled === "1") {
+                        return;
+                    }
+                    image.dataset.settled = "1";
+                    loadedCount += 1;
+                    if (Number(image.dataset.pageIndex) === 1) {
+                        hidePageLoading();
+                    }
+                    updateProgress();
+                    pumpMoreIfNeeded();
+                });
+                image.addEventListener("error", function () {
+                    if (image.dataset.settled === "1") {
+                        return;
+                    }
+                    image.dataset.settled = "1";
+                    loadedCount += 1;
+                    updateProgress();
+                    pumpMoreIfNeeded();
+                });
+
+                shell.appendChild(image);
+                fragment.appendChild(shell);
+            }
+
+            stream.appendChild(fragment);
+            renderedCount = limit;
+            updateProgress();
+            return true;
+        };
+
+        const pumpMoreIfNeeded = function () {
+            if (pumpScheduled || navigationStarted) {
+                return;
+            }
+            pumpScheduled = true;
+            window.requestAnimationFrame(function () {
+                pumpScheduled = false;
+                let batches = 0;
+                while (renderedCount < pageAssets.length && isNearBottom() && batches < 3) {
+                    if (!renderNextBatch()) {
+                        break;
+                    }
+                    batches += 1;
+                }
+            });
+        };
+
+        const startNavigationTeardown = function () {
+            if (navigationStarted || !stream) {
+                return;
+            }
+            navigationStarted = true;
+            progress.hidden = false;
+            progressText.textContent = "正在切換頁面，請稍候…";
+            stream.replaceChildren();
+        };
+
+        document.querySelectorAll(".chapter-nav a, .device-switches a, .site-nav a").forEach((link) => {
+            link.addEventListener("click", startNavigationTeardown, true);
+        });
+
+        if (stream) {
+            stream.addEventListener("contextmenu", function (event) {
+                event.preventDefault();
+            });
+            stream.addEventListener("dragstart", function (event) {
+                event.preventDefault();
+            });
+        }
+
+        document.addEventListener("keydown", function (event) {
+            if ((event.ctrlKey || event.metaKey) && ["s", "u", "p"].includes(event.key.toLowerCase())) {
+                event.preventDefault();
+            }
+        });
+
+        const observer = sentinel ? new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    pumpMoreIfNeeded();
+                }
+            });
+        }, {
+            rootMargin: "1200px 0px 1200px 0px",
+        }) : null;
+
+        if (observer && sentinel) {
+            observer.observe(sentinel);
+        }
+
+        renderNextBatch();
+        if (renderedCount < initialBatchSize) {
+            renderNextBatch();
+        }
+        updateProgress();
+        pumpMoreIfNeeded();
+
+        window.addEventListener("scroll", pumpMoreIfNeeded, { passive: true });
+        window.addEventListener("resize", pumpMoreIfNeeded);
+        window.addEventListener("pagehide", function () {
+            if (observer) {
+                observer.disconnect();
+            }
+            startNavigationTeardown();
+        });
+
+        if (pageAssets.length === 0) {
+            hidePageLoading();
+        }
+    });
+</script>
+{% endblock %}

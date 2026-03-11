@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | CatchingRat 管理後台{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --cr-accent: #7a3419;
+        --cr-surface: #f7efe5;
+        --cr-line: rgba(53, 32, 20, 0.14);
+    }
+
+    body,
+    input,
+    textarea,
+    select,
+    button {
+        font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif !important;
+    }
+
+    #site-name a,
+    .module caption,
+    .module h2 {
+        font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif !important;
+    }
+
+    .cr-admin-tools {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin: 0 0 20px;
+    }
+
+    .cr-admin-card {
+        display: block;
+        padding: 16px 18px;
+        border-radius: 16px;
+        border: 1px solid var(--cr-line);
+        background: var(--cr-surface);
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .cr-admin-card strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--cr-accent);
+    }
+
+    .cr-admin-card span {
+        color: #5f5047;
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'backoffice:dashboard' %}">CatchingRat 管理後台</a>
+    <span style="display: inline-block; margin-left: 10px; font-size: 12px; opacity: 0.85;">{{ app_version }}</span>
+</div>
+{% endblock %}
+
+{% block nav-global %}
+<a href="{% url 'backoffice:dashboard' %}" style="color: var(--header-link-color); margin-right: 12px;">友善後台</a>
+<a href="{% url 'admin-anti7ocr-diagnostics' %}" style="color: var(--header-link-color); margin-right: 12px;">anti7ocr 診斷</a>
+<a href="{% url 'admin-watermark-extract' %}" style="color: var(--header-link-color); margin-right: 12px;">Blind 提取</a>
+<a href="{% url 'admin-visible-watermark-extract' %}" style="color: var(--header-link-color); margin-right: 12px;">可見提取</a>
+<a href="/" style="color: var(--header-link-color);">網站首頁</a>
+{% endblock %}

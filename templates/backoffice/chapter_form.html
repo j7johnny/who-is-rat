@@ -1,0 +1,177 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="secondary-button" href="{% url 'backoffice:novel-list' %}">回到小說列表</a>
+{% if chapter %}
+    <a class="secondary-button" href="{% url 'backoffice:novel-detail' chapter.novel_id %}">回到小說內容</a>
+{% endif %}
+{% endblock %}
+
+{% block manage_content %}
+<section class="manage-grid manage-grid--two">
+    <form method="post" class="manage-panel" id="chapter-editor-form">
+        {% csrf_token %}
+        <div class="section-heading">
+            <h3>{% if chapter %}章節編輯{% else %}新增章節{% endif %}</h3>
+            <p class="subtle">可先儲存草稿，再背景發布。</p>
+        </div>
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label class="field {% if field.name == 'content' %}field--full{% endif %}">
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                {{ field.errors }}
+            </label>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" name="action" value="save" class="secondary-button">儲存草稿</button>
+            <button type="submit" name="action" value="publish" class="primary-button" id="publish-submit-button">背景發布</button>
+        </div>
+    </form>
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>章節狀態</h3>
+            <p class="subtle">發布完成前不會對讀者開放新版本。</p>
+        </div>
+        {% if chapter %}
+            <dl class="meta-list">
+                <div>
+                    <dt>小說</dt>
+                    <dd>{{ chapter.novel.title }}</dd>
+                </div>
+                <div>
+                    <dt>章節狀態</dt>
+                    <dd id="chapter-status-text">{{ chapter.get_status_display }}</dd>
+                </div>
+                <div>
+                    <dt>目前版本</dt>
+                    <dd>{% if chapter.current_version %}v{{ chapter.current_version.version_number }}{% else %}尚未發布{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>最後發布時間</dt>
+                    <dd>{% if chapter.published_at %}{{ chapter.published_at|date:"Y-m-d H:i" }}{% else %}尚未發布{% endif %}</dd>
+                </div>
+                <div>
+                    <dt>Anti-7OCR 參數</dt>
+                    <dd>{% if chapter.anti_ocr_preset %}{{ chapter.anti_ocr_preset.name }}{% else %}使用全站預設{% endif %}</dd>
+                </div>
+            </dl>
+
+            <article
+                class="bo-hint-card"
+                id="publish-job-card"
+                {% if not active_publish_job %}hidden{% endif %}
+                data-status-url="{% url 'backoffice:chapter-publish-status' chapter.id %}"
+            >
+                <strong>發布進度</strong>
+                <p class="subtle" id="publish-job-step">
+                    {% if active_publish_job %}{{ active_publish_job.step_label|default:"排隊中" }}{% else %}尚無任務{% endif %}
+                </p>
+                <div class="progress-track">
+                    <div
+                        class="progress-fill"
+                        id="publish-job-progress"
+                        style="width: {% if active_publish_job %}{{ active_publish_job.progress_percent }}{% else %}0{% endif %}%"
+                    ></div>
+                </div>
+                <p class="subtle" id="publish-job-percent">
+                    {% if active_publish_job %}{{ active_publish_job.progress_percent }}%{% else %}0%{% endif %}
+                </p>
+                <p class="subtle" id="publish-job-error"></p>
+            </article>
+        {% else %}
+            <div class="bo-empty-state">
+                <strong>尚未建立章節</strong>
+                <p class="subtle">建立後即可背景發布。</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if chapter %}
+<script>
+(() => {
+    const form = document.getElementById("chapter-editor-form");
+    if (form) {
+        form.addEventListener("submit", (event) => {
+            const submitter = event.submitter;
+            if (!submitter) return;
+            if (submitter.name !== "action" || submitter.value !== "publish") return;
+            if (form.dataset.publishing === "1") {
+                event.preventDefault();
+                return;
+            }
+            form.dataset.publishing = "1";
+            submitter.disabled = true;
+            submitter.textContent = "排程中...";
+            const saveButton = form.querySelector('button[name="action"][value="save"]');
+            if (saveButton) saveButton.disabled = true;
+        });
+    }
+
+    const card = document.getElementById("publish-job-card");
+    if (!card) return;
+    const statusUrl = card.dataset.statusUrl;
+    if (!statusUrl) return;
+
+    const stepNode = document.getElementById("publish-job-step");
+    const percentNode = document.getElementById("publish-job-percent");
+    const progressNode = document.getElementById("publish-job-progress");
+    const errorNode = document.getElementById("publish-job-error");
+    const chapterStatusNode = document.getElementById("chapter-status-text");
+
+    let timer = null;
+
+    const stopPolling = () => {
+        if (timer) {
+            window.clearTimeout(timer);
+            timer = null;
+        }
+    };
+
+    const render = (payload) => {
+        if (!payload || !payload.exists) {
+            card.hidden = true;
+            return;
+        }
+        card.hidden = false;
+        const progress = Math.max(0, Math.min(100, Number(payload.progress_percent || 0)));
+        progressNode.style.width = `${progress}%`;
+        percentNode.textContent = `${progress}%`;
+        stepNode.textContent = payload.step_label || payload.status_display || payload.status || "處理中";
+        errorNode.textContent = payload.error_message || "";
+        if (chapterStatusNode && payload.chapter_status_display) {
+            chapterStatusNode.textContent = payload.chapter_status_display;
+        }
+    };
+
+    const poll = async () => {
+        try {
+            const response = await fetch(statusUrl, {
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+                cache: "no-store",
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            render(payload);
+            if (payload.status === "pending" || payload.status === "running") {
+                timer = window.setTimeout(poll, 1800);
+                return;
+            }
+            stopPolling();
+        } catch (error) {
+            errorNode.textContent = `更新發布進度失敗：${error}`;
+            timer = window.setTimeout(poll, 3000);
+        }
+    };
+
+    poll();
+})();
+</script>
+{% endif %}
+{% endblock %}

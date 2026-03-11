@@ -1,0 +1,76 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="primary-button" href="{% url 'backoffice:reader-create' %}">新增閱讀者</a>
+<a class="secondary-button" href="{% url 'backoffice:novel-create' %}">新增小說</a>
+<a class="secondary-button" href="{% url 'backoffice:anti7ocr-diagnostics' %}">OCR 診斷</a>
+<a class="secondary-button" href="{% url 'backoffice:watermark-extract' %}">提取浮水印</a>
+{% endblock %}
+
+{% block manage_content %}
+<section class="stat-grid">
+    {% for stat in stats %}
+        <article class="stat-card">
+            <p class="stat-card__label">{{ stat.label }}</p>
+            <p class="stat-card__value">{{ stat.value }}</p>
+        </article>
+    {% endfor %}
+</section>
+
+<section class="manage-grid">
+    <article class="manage-panel">
+        <div class="section-heading">
+            <h3>建議操作順序</h3>
+            <p class="subtle">第一次開站或清空資料後，建議依照這個順序建立內容。</p>
+        </div>
+        <div class="action-grid">
+            <a class="action-card" href="{% url 'backoffice:reader-create' %}">
+                <strong>1. 新增閱讀者</strong>
+                <span>先建立帳號，再決定授權範圍與初始密碼。</span>
+            </a>
+            <a class="action-card" href="{% url 'backoffice:novel-create' %}">
+                <strong>2. 新增小說</strong>
+                <span>建立小說基本資料，之後章節會歸屬在小說底下。</span>
+            </a>
+            <a class="action-card" href="{% url 'backoffice:chapter-create' %}">
+                <strong>3. 撰寫章節</strong>
+                <span>先存草稿，再選 anti7ocr 設定與發布。</span>
+            </a>
+            <a class="action-card" href="{% url 'backoffice:anti-ocr-list' %}">
+                <strong>4. 調整 anti7ocr</strong>
+                <span>先用示範圖片確認閱讀感，再套用到正式章節。</span>
+            </a>
+            <a class="action-card" href="{% url 'backoffice:anti7ocr-diagnostics' %}">
+                <strong>5. 跑 OCR 診斷</strong>
+                <span>用 Tesseract 看目前設定的辨識難度與 CER。</span>
+            </a>
+            <a class="action-card" href="{% url 'backoffice:watermark-extract' %}">
+                <strong>6. 驗證浮水印</strong>
+                <span>上傳原圖或截圖，確認提取流程是否穩定。</span>
+            </a>
+        </div>
+    </article>
+
+    <article class="manage-panel">
+        <div class="section-heading">
+            <h3>最近更新章節</h3>
+            <p class="subtle">可從這裡快速回到最近處理過的章節。</p>
+        </div>
+        <div class="list-stack">
+            {% for chapter in recent_chapters %}
+                <a class="list-row" href="{% url 'backoffice:chapter-detail' chapter.id %}">
+                    <div>
+                        <strong>{{ chapter.title }}</strong>
+                        <p class="subtle">{{ chapter.novel.title }}</p>
+                    </div>
+                    <span class="status-pill {% if chapter.status == 'published' %}is-success{% endif %}">
+                        {{ chapter.get_status_display }}
+                    </span>
+                </a>
+            {% empty %}
+                <p class="subtle">目前還沒有任何章節。</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}

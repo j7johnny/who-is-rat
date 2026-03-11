@@ -1,0 +1,105 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="secondary-button" href="{% url 'backoffice:anti-ocr-list' %}">回設定列表</a>
+<a class="secondary-button" href="{% url 'backoffice:font-library' %}">管理字體</a>
+<a class="secondary-button" href="{% url 'backoffice:anti7ocr-diagnostics' %}">OCR 診斷</a>
+{% endblock %}
+
+{% block manage_content %}
+<section class="manage-grid manage-grid--two">
+    <form method="post" class="manage-panel">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="bo-hint-grid">
+            <article class="bo-hint-card">
+                <strong>閱讀優先</strong>
+                <p class="subtle">建議先維持拼音與倒字關閉，優先靠背景、碎裂與邊緣擾動提高 OCR 難度。</p>
+            </article>
+            <article class="bo-hint-card">
+                <strong>示範圖片先看</strong>
+                <p class="subtle">修改參數後可先產生示範圖片，確認肉眼閱讀是否仍然舒服，再按儲存。</p>
+            </article>
+        </div>
+
+        {% for group in form.grouped_fields %}
+            <section class="preset-section">
+                <div class="section-heading">
+                    <h3>{{ group.title }}</h3>
+                    <p class="subtle">{{ group.description }}</p>
+                </div>
+                <div class="manage-grid manage-grid--two">
+                    {% for field in group.fields %}
+                        <label class="field {% if field.name == 'preview_text' or field.name == 'closed_structure_chars' %}field--full{% endif %}">
+                            <span>{{ field.label }}</span>
+                            {{ field }}
+                            {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                            {{ field.errors }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+
+        <div class="form-actions">
+            <button type="submit" name="action" value="preview" class="secondary-button">產生示範圖片</button>
+            <button type="submit" name="action" value="save" class="primary-button">儲存設定</button>
+        </div>
+    </form>
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>右側輔助資訊</h3>
+            <p class="subtle">先用示範圖片判斷閱讀感，再決定是否要進一步提高防 OCR 強度。</p>
+        </div>
+
+        {% if preview_result %}
+            <div class="diagnostic-preview">
+                <img src="{{ preview_result.image_url }}" alt="anti7ocr 示範圖片">
+            </div>
+            <dl class="meta-list">
+                <div>
+                    <dt>seed</dt>
+                    <dd>{{ preview_result.seed }}</dd>
+                </div>
+                <div>
+                    <dt>輸出路徑</dt>
+                    <dd>{{ preview_result.relative_path }}</dd>
+                </div>
+                {% if preview_result.font_paths %}
+                <div>
+                    <dt>本次示範字體</dt>
+                    <dd>{{ preview_result.font_paths|join:"、" }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        {% else %}
+            <div class="bo-empty-state">
+                <strong>尚未產生示範圖片</strong>
+                <p class="subtle">請先填入或保留示範文字，按下「產生示範圖片」。</p>
+            </div>
+        {% endif %}
+
+        <div class="section-heading">
+            <h3>目前可用字體</h3>
+            <p class="subtle">正式發布與示範圖片都會共用這些字體來源。</p>
+        </div>
+        <div class="list-stack">
+            {% for font in fonts %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ font.name }}</strong>
+                        <p class="subtle">{{ font.font_file.name }}</p>
+                    </div>
+                    <span class="status-pill {% if font.is_active %}is-success{% endif %}">
+                        {% if font.is_active %}啟用中{% else %}停用{% endif %}
+                    </span>
+                </div>
+            {% empty %}
+                <p class="subtle">尚未上傳自訂字體，目前只會使用伺服器上的字體。</p>
+            {% endfor %}
+        </div>
+    </section>
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+.venv/
+venv/
+.env
+*.sqlite3
+db.sqlite3
+
+media/
+test_media/
+staticfiles/
+*.log
+celerybeat-schedule
+celerybeat-schedule.db
+
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.docker/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Claude
+.claude/

@@ -1,0 +1,73 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="secondary-button" href="{% url 'backoffice:anti-ocr-list' %}">回 anti7ocr 設定</a>
+{% endblock %}
+
+{% block manage_content %}
+<section class="manage-grid manage-grid--two">
+    <form method="post" class="manage-panel">
+        {% csrf_token %}
+        <div class="section-heading">
+            <h3>診斷輸入</h3>
+            <p class="subtle">這裡只做測試，不會改動任何正式章節內容。</p>
+        </div>
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label class="field {% if field.name in 'text,sensitive_keywords' %}field--full{% endif %}">
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                {{ field.errors }}
+            </label>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" class="primary-button">執行診斷</button>
+        </div>
+    </form>
+
+    <section class="manage-panel">
+        <div class="section-heading">
+            <h3>診斷結果</h3>
+            <p class="subtle">會顯示示範圖片、OCR 輸出與 CER。</p>
+        </div>
+        {% if result %}
+            <div class="diagnostic-preview">
+                <img src="{{ result.image_url }}" alt="anti7ocr 診斷圖片">
+            </div>
+            <p class="status-pill is-success">CER {{ result.cer|floatformat:4 }}</p>
+            <dl class="meta-list">
+                <div>
+                    <dt>seed</dt>
+                    <dd>{{ result.seed }}</dd>
+                </div>
+                <div>
+                    <dt>CER</dt>
+                    <dd>{{ result.cer|floatformat:4 }}</dd>
+                </div>
+                <div>
+                    <dt>Tesseract 平均 CER</dt>
+                    <dd>{{ result.avg_cer.tesseract|default:"-" }}</dd>
+                </div>
+            </dl>
+            <div class="preset-section">
+                <div class="section-heading">
+                    <h4>OCR 輸出</h4>
+                </div>
+                <pre>{{ result.recognized_text }}</pre>
+            </div>
+            <div class="preset-section">
+                <div class="section-heading">
+                    <h4>metadata</h4>
+                </div>
+                <pre>{{ result.metadata }}</pre>
+            </div>
+        {% else %}
+            <div class="bo-empty-state">
+                <strong>尚未執行</strong>
+                <p class="subtle">輸入文字後按「執行診斷」，右側就會顯示結果。</p>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

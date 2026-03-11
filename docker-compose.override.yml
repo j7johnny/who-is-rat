@@ -1,0 +1,34 @@
+# Development overrides — auto-loaded by docker compose
+services:
+  web:
+    volumes:
+      - .:/app
+      - app_media:/app/media
+      - app_static:/app/staticfiles
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DJANGO_DEBUG: "1"
+    command: python manage.py runserver 0.0.0.0:8000
+
+  worker:
+    volumes:
+      - .:/app
+      - app_media:/app/media
+
+  worker_publish:
+    volumes:
+      - .:/app
+      - app_media:/app/media
+
+  beat:
+    volumes:
+      - .:/app
+      - app_media:/app/media
+
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-16379}:6379"

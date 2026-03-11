@@ -1,0 +1,38 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+    <h1>浮水印提取</h1>
+    <p>上傳站內輸出圖或一般截圖，系統會嘗試提取 `reader_id|yyyymmdd`。</p>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="default">開始提取</button>
+    </form>
+    {% if result %}
+        <fieldset class="module aligned">
+            <h2>提取結果</h2>
+            <div class="form-row">
+                <div>
+                    <strong>原始文本：</strong>
+                    <code>{{ result.raw_payload }}</code>
+                </div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <strong>驗證狀態：</strong>
+                    {% if result.is_valid %}成功{% else %}失敗{% endif %}
+                </div>
+            </div>
+            {% if result.parsed %}
+                <div class="form-row">
+                    <div><strong>reader_id：</strong> {{ result.parsed.reader_id }}</div>
+                </div>
+                <div class="form-row">
+                    <div><strong>日期：</strong> {{ result.parsed.yyyymmdd }}</div>
+                </div>
+            {% endif %}
+        </fieldset>
+    {% endif %}
+</div>
+{% endblock %}

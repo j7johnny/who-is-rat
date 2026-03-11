@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}我的書庫 | CatchingRat{% endblock %}
+
+{% block content %}
+<section class="stack">
+    <div>
+        <p class="eyebrow">小說列表</p>
+        <h2>我的書庫</h2>
+        <p class="subtle">先選擇小說，再進入該小說的章節列表。</p>
+    </div>
+    {% if novels %}
+        <div class="novel-grid">
+            {% for novel in novels %}
+                <a href="{% url 'reader:novel-detail' novel.id %}" class="novel-card">
+                    <div class="novel-card__meta">
+                        <span class="novel-card__count">{{ novel.chapter_count }} 章</span>
+                    </div>
+                    <h3>{{ novel.title }}</h3>
+                    {% if novel.description %}
+                        <p class="subtle">{{ novel.description }}</p>
+                    {% else %}
+                        <p class="subtle">進入後可查看本小說已授權的章節。</p>
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="subtle">目前尚未授權任何小說或章節。</p>
+    {% endif %}
+</section>
+{% endblock %}

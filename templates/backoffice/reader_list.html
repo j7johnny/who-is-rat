@@ -1,0 +1,46 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="primary-button" href="{% url 'backoffice:reader-create' %}">新增閱讀者</a>
+{% endblock %}
+
+{% block manage_content %}
+<section class="manage-panel">
+    <div class="section-heading">
+        <h3>閱讀者列表</h3>
+        <p class="subtle">可直接進入帳號頁面重設密碼與調整授權。</p>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>帳號</th>
+                    <th>狀態</th>
+                    <th>全站授權</th>
+                    <th>小說授權數</th>
+                    <th>章節授權數</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reader in readers %}
+                    <tr>
+                        <td>{{ reader.username }}</td>
+                        <td>{% if reader.is_active %}啟用{% else %}停用{% endif %}</td>
+                        <td>{{ reader.site_grant_count }}</td>
+                        <td>{{ reader.novel_grant_count }}</td>
+                        <td>{{ reader.chapter_grant_count }}</td>
+                        <td class="actions-cell">
+                            <a class="secondary-button" href="{% url 'backoffice:reader-update' reader.id %}">編輯</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6">目前還沒有閱讀者帳號。</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

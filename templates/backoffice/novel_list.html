@@ -1,0 +1,20 @@
+{% extends "backoffice/base.html" %}
+
+{% block hero_actions %}
+<a class="primary-button" href="{% url 'backoffice:novel-create' %}">新增小說</a>
+{% endblock %}
+
+{% block manage_content %}
+<section class="card-grid">
+    {% for novel in novels %}
+        <a class="action-card" href="{% url 'backoffice:novel-detail' novel.id %}">
+            <strong>{{ novel.title }}</strong>
+            <span>{{ novel.chapter_count }} 個章節，其中 {{ novel.published_count }} 個已發布。</span>
+        </a>
+    {% empty %}
+        <article class="manage-panel">
+            <p class="subtle">目前還沒有任何小說。</p>
+        </article>
+    {% endfor %}
+</section>
+{% endblock %}

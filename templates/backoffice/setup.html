@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | CatchingRat{% endblock %}
+
+{% block content %}
+<section class="stack">
+    <div class="manage-panel setup-panel">
+        <div class="section-heading">
+            <p class="eyebrow">First Run Setup</p>
+            <h2>{{ page_title }}</h2>
+            <p class="subtle">{{ page_subtitle }}</p>
+        </div>
+        <form method="post" class="form-card">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <label class="field">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
+                    {{ field.errors }}
+                </label>
+            {% endfor %}
+            <div class="form-actions">
+                <button type="submit" class="primary-button">建立管理者</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
