@@ -46,11 +46,19 @@
 
   <!-- Chapters table -->
   <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
-    <h2 class="text-lg font-semibold text-stone-900 mb-1">章節列表</h2>
-    <p class="text-sm text-stone-500 mb-5">點擊背景發布後，系統會在背景產生基底圖。</p>
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="text-lg font-semibold text-stone-900">章節列表</h2>
+      <div id="publish-indicator" class="hidden">
+        <span class="inline-flex items-center gap-1.5 text-xs text-amber-600">
+          <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+          產製中
+        </span>
+      </div>
+    </div>
+    <p class="text-sm text-stone-500 mb-5">發布後系統會在背景產生基底圖，此頁面自動更新進度。</p>
     {% if novel and chapters %}
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table class="w-full text-sm" id="chapter-table">
         <thead>
           <tr class="border-b border-stone-200">
             <th class="text-left text-stone-500 font-medium py-2 px-2">#</th>
@@ -63,22 +71,33 @@
         <tbody>
           {% for chapter in chapters %}
           {% with job=chapter.publish_job %}
-          <tr class="border-b border-stone-100 hover:bg-stone-50">
+          <tr class="border-b border-stone-100 hover:bg-stone-50" data-chapter-id="{{ chapter.id }}">
             <td class="py-3 px-2 text-stone-400">{{ chapter.sort_order }}</td>
             <td class="py-3 px-2">
               <p class="font-medium text-stone-900">{{ chapter.title }}</p>
-              {% if job %}
-              <p class="text-xs text-amber-600 mt-0.5">{{ job.step_label|default:"處理中" }} · {{ job.progress_percent }}%</p>
-              {% endif %}
+              <p class="text-xs mt-0.5 chapter-progress"
+                 data-status-url="{% url 'backoffice:chapter-publish-status' chapter.id %}"
+                 {% if not job %}style="display:none"{% endif %}>
+                {% if job %}
+                <span class="text-amber-600">
+                  <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-1"></span>
+                  <span class="step-label">{{ job.step_label|default:"排隊中" }}</span>
+                  ·
+                  <span class="progress-pct">{{ job.progress_percent }}%</span>
+                </span>
+                {% endif %}
+              </p>
             </td>
             <td class="py-3 px-2">
+              <span class="chapter-status-pill">
               {% if chapter.status == 'published' %}
               <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">已發布</span>
               {% else %}
               <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600">草稿</span>
               {% endif %}
+              </span>
             </td>
-            <td class="py-3 px-2 text-stone-500">
+            <td class="py-3 px-2 text-stone-500 chapter-version">
               {% if chapter.current_version %}v{{ chapter.current_version.version_number }}{% else %}—{% endif %}
             </td>
             <td class="py-3 px-2 text-right">
@@ -87,10 +106,13 @@
                 <form method="post" action="{% url 'backoffice:chapter-publish' chapter.id %}" class="inline"
                       onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='排程中…'">
                   {% csrf_token %}
-                  <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                                                {% if job %}bg-stone-100 text-stone-400 cursor-not-allowed{% else %}bg-brand-500 hover:bg-brand-600 text-white{% endif %}"
+                  <button type="submit" class="chapter-publish-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                                                {% if job %}bg-amber-100 text-amber-600 cursor-not-allowed{% else %}bg-brand-500 hover:bg-brand-600 text-white{% endif %}"
                           {% if job %}disabled{% endif %}>
-                    {% if job %}排程中…{% else %}發布{% endif %}
+                    {% if job %}
+                    <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-0.5"></span>
+                    產製中
+                    {% else %}發布{% endif %}
                   </button>
                 </form>
               </div>
@@ -111,4 +133,69 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{% if novel and chapters %}
+<script>
+(function() {
+  const rows = document.querySelectorAll("[data-chapter-id]");
+  const indicator = document.getElementById("publish-indicator");
+  let activeJobs = 0;
+
+  rows.forEach(function(row) {
+    const progressEl = row.querySelector(".chapter-progress");
+    const statusUrl = progressEl ? progressEl.dataset.statusUrl : null;
+    if (!statusUrl) return;
+    // Only poll rows that have active jobs
+    if (progressEl.style.display === "none") return;
+    activeJobs++;
+    pollRow(row, statusUrl, progressEl);
+  });
+
+  if (activeJobs > 0 && indicator) indicator.classList.remove("hidden");
+
+  function pollRow(row, url, progressEl) {
+    let interval = setInterval(async function() {
+      try {
+        const r = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+        const d = await r.json();
+
+        if (!d.exists || d.status === "completed" || d.status === "failed") {
+          clearInterval(interval);
+          activeJobs--;
+          if (activeJobs <= 0 && indicator) indicator.classList.add("hidden");
+
+          if (d.status === "completed") {
+            // Update UI to show completed
+            progressEl.innerHTML = '<span class="text-emerald-600">發布完成</span>';
+            progressEl.style.display = "";
+            const pill = row.querySelector(".chapter-status-pill");
+            if (pill) pill.innerHTML = '<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">已發布</span>';
+            const btn = row.querySelector(".chapter-publish-btn");
+            if (btn) { btn.disabled = false; btn.textContent = "重新發布"; btn.className = "chapter-publish-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-brand-500 hover:bg-brand-600 text-white"; }
+            // Fade out success message
+            setTimeout(function() { progressEl.style.display = "none"; }, 5000);
+          } else if (d.status === "failed") {
+            progressEl.innerHTML = '<span class="text-red-600">發布失敗：' + (d.error_message || "未知錯誤") + '</span>';
+            progressEl.style.display = "";
+            const btn = row.querySelector(".chapter-publish-btn");
+            if (btn) { btn.disabled = false; btn.textContent = "重試"; btn.className = "chapter-publish-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-red-500 hover:bg-red-600 text-white"; }
+          }
+          return;
+        }
+
+        // Update progress
+        const pct = Math.max(0, Math.min(100, d.progress_percent || 0));
+        const step = d.step_label || "處理中";
+        progressEl.innerHTML = '<span class="text-amber-600"><span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-1"></span><span class="step-label">' + step + '</span> · <span class="progress-pct">' + pct + '%</span></span>';
+        progressEl.style.display = "";
+      } catch(e) {
+        // Silently retry
+      }
+    }, 2500);
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}

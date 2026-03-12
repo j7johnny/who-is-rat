@@ -60,11 +60,10 @@
     <!-- Pages injected by JS -->
   </div>
 
-  <!-- Loading indicator -->
-  <div id="page-sentinel" class="h-4"></div>
+  <!-- Loading progress -->
   <div id="page-progress" class="py-8 text-center" x-show="!allLoaded">
     <div class="wir-spinner mx-auto mb-3"></div>
-    <p class="text-sm text-stone-500" id="progress-text">載入中…</p>
+    <p class="text-sm text-stone-500" id="progress-text">正在準備頁面…</p>
   </div>
 
   <!-- Chapter navigation (bottom) -->
@@ -116,94 +115,90 @@ function readerApp() {
 
 document.addEventListener("DOMContentLoaded", function() {
   const stream = document.getElementById("page-stream");
-  const sentinel = document.getElementById("page-sentinel");
   const progressEl = document.getElementById("page-progress");
   const progressText = document.getElementById("progress-text");
   const assets = JSON.parse(document.getElementById("chapter-page-assets").textContent);
-  const EAGER = 4, BATCH = 4;
+  const total = assets.length;
 
-  let rendered = 0, loaded = 0;
+  if (total === 0) { progressText.textContent = "此章節尚無頁面"; return; }
 
-  function update() {
-    const total = assets.length;
-    if (rendered < total) {
-      progressText.textContent = "已載入 " + rendered + " / " + total + " 頁";
-    } else if (loaded < total) {
-      progressText.textContent = "圖片載入中… " + loaded + " / " + total;
-    } else {
+  // Create skeleton placeholders immediately (correct aspect ratio)
+  const slots = [];
+  for (let i = 0; i < total; i++) {
+    const a = assets[i];
+    const w = document.createElement("div");
+    w.className = "relative";
+    const ratio = ((a.height / a.width) * 100).toFixed(2);
+    w.innerHTML = '<div class="page-skel bg-stone-900 w-full animate-pulse" style="padding-bottom:' + ratio + '%">' +
+      '<div class="absolute inset-0 flex items-center justify-center text-stone-700 text-sm">第 ' + (i+1) + ' / ' + total + ' 頁</div></div>';
+    stream.appendChild(w);
+    slots.push({ el: w, asset: a, ok: false, tries: 0 });
+  }
+
+  let done = 0;
+  function progress() {
+    if (done >= total) {
       if (progressEl) progressEl.style.display = "none";
-      // Tell Alpine
       try { document.querySelector("[x-data]").__x.$data.allLoaded = true; } catch(e) {}
+    } else {
+      progressText.textContent = "已載入 " + done + " / " + total + " 頁";
     }
   }
 
-  function renderBatch() {
-    if (rendered >= assets.length) return false;
-    const end = Math.min(rendered + BATCH, assets.length);
-    const frag = document.createDocumentFragment();
-    for (let i = rendered; i < end; i++) {
-      const a = assets[i];
-      const img = document.createElement("img");
-      img.className = "wir-reader-page w-full";
-      img.alt = "第 " + (i + 1) + " 頁";
-      img.decoding = "async";
-      img.loading = i < EAGER ? "eager" : "lazy";
-      img.draggable = false;
-      img.width = a.width;
-      img.height = a.height;
-      img.src = a.url;
-      img.onload = img.onerror = function() {
-        if (this.dataset.done) return;
-        this.dataset.done = "1";
-        loaded++;
-        update();
-        pump();
-      };
-      frag.appendChild(img);
-    }
-    stream.appendChild(frag);
-    rendered = end;
-    update();
-    return true;
-  }
+  // Sequential loader: one page at a time to avoid server congestion
+  // (each page may trigger on-demand watermark generation)
+  const MAX_RETRY = 6, RETRY_BASE = 1500;
+  let cur = 0;
 
-  function nearBottom() {
-    return window.scrollY + window.innerHeight + Math.max(window.innerHeight, 800)
-           >= document.documentElement.scrollHeight;
-  }
+  function next() {
+    if (cur >= total) return;
+    const idx = cur;
+    const s = slots[idx];
+    cur++;
 
-  let pumping = false;
-  function pump() {
-    if (pumping) return;
-    pumping = true;
-    requestAnimationFrame(function() {
-      pumping = false;
-      let n = 0;
-      while (rendered < assets.length && nearBottom() && n < 3) {
-        renderBatch();
-        n++;
+    const img = new Image();
+    img.className = "wir-reader-page w-full";
+    img.alt = "第 " + (idx+1) + " 頁";
+    img.decoding = "async";
+    img.draggable = false;
+    img.width = s.asset.width;
+    img.height = s.asset.height;
+
+    // Update skeleton text
+    const label = s.el.querySelector(".page-skel div");
+    if (label) label.textContent = "正在載入第 " + (idx+1) + " 頁…";
+
+    img.onload = function() {
+      s.el.innerHTML = "";
+      s.el.appendChild(img);
+      s.ok = true;
+      done++;
+      progress();
+      next();
+    };
+    img.onerror = function() {
+      s.tries++;
+      if (s.tries <= MAX_RETRY) {
+        if (label) label.textContent = "第 " + (idx+1) + " 頁準備中…（" + s.tries + "/" + MAX_RETRY + "）";
+        cur--; // re-queue
+        setTimeout(next, RETRY_BASE * Math.min(s.tries, 3));
+      } else {
+        s.el.innerHTML = '<div class="bg-stone-900 rounded-lg py-6 text-center text-stone-600 text-sm">第 ' + (idx+1) + ' 頁載入失敗</div>';
+        done++;
+        progress();
+        next();
       }
-    });
+    };
+    img.src = s.asset.url;
   }
+
+  progressText.textContent = "正在載入第 1 / " + total + " 頁…";
+  next();
 
   // Anti-copy
   document.addEventListener("keydown", function(e) {
     if ((e.ctrlKey || e.metaKey) && "sup".includes(e.key.toLowerCase())) e.preventDefault();
   });
-
-  // IntersectionObserver for lazy loading
-  if (sentinel) {
-    new IntersectionObserver(function(entries) {
-      if (entries[0].isIntersecting) pump();
-    }, { rootMargin: "1200px" }).observe(sentinel);
-  }
-
-  // Initial render
-  renderBatch();
-  if (rendered < EAGER) renderBatch();
-  pump();
-  window.addEventListener("scroll", pump, { passive: true });
-  window.addEventListener("resize", pump);
 });
 </script>
 {% endblock %}
