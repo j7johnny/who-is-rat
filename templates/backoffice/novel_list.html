@@ -1,20 +1,50 @@
 {% extends "backoffice/base.html" %}
 
-{% block hero_actions %}
-<a class="primary-button" href="{% url 'backoffice:novel-create' %}">新增小說</a>
+{% block header_actions %}
+<a href="{% url 'backoffice:novel-create' %}" class="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">新增小說</a>
 {% endblock %}
 
 {% block manage_content %}
-<section class="card-grid">
-    {% for novel in novels %}
-        <a class="action-card" href="{% url 'backoffice:novel-detail' novel.id %}">
-            <strong>{{ novel.title }}</strong>
-            <span>{{ novel.chapter_count }} 個章節，其中 {{ novel.published_count }} 個已發布。</span>
-        </a>
-    {% empty %}
-        <article class="manage-panel">
-            <p class="subtle">目前還沒有任何小說。</p>
-        </article>
-    {% endfor %}
-</section>
+{% if novels %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for novel in novels %}
+  <a href="{% url 'backoffice:novel-detail' novel.id %}"
+     class="bg-white rounded-xl border border-stone-200 shadow-sm p-5 hover:border-brand-300 hover:shadow-md transition-all group">
+    <div class="flex items-start justify-between gap-2">
+      <h3 class="text-sm font-semibold text-stone-900 group-hover:text-brand-600 transition-colors">{{ novel.title }}</h3>
+      {% if not novel.is_active %}
+      <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600 shrink-0">停用</span>
+      {% endif %}
+    </div>
+    <div class="mt-3 flex items-center gap-4">
+      <div class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+        </svg>
+        <span class="text-xs text-stone-500">{{ novel.chapter_count }} 個章節</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-xs text-stone-500">{{ novel.published_count }} 已發布</span>
+      </div>
+    </div>
+    {% if novel.description %}
+    <p class="mt-3 text-xs text-stone-400 line-clamp-2">{{ novel.description }}</p>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-xl border border-stone-200 shadow-sm">
+  <div class="px-5 py-16 text-center">
+    <svg class="w-12 h-12 mx-auto text-stone-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+    </svg>
+    <p class="text-sm text-stone-400">目前還沒有任何小說。</p>
+    <a href="{% url 'backoffice:novel-create' %}" class="inline-block mt-3 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">建立第一本小說</a>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

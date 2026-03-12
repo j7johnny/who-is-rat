@@ -1,6 +1,7 @@
+from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.http import Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -48,7 +49,8 @@ def resolve_device_profile(request) -> str:
 
 
 def ensure_reader_access(user: User) -> None:
-    if user.role != User.Role.READER:
+    """Allow READER and ADMIN users to access reader pages (admin can preview)."""
+    if user.role not in (User.Role.READER, User.Role.ADMIN):
         raise PermissionDenied
 
 
@@ -206,7 +208,17 @@ def reader_page_image(request, signed_key: str, page_index: int):
         raise Http404
 
     page = build_daily_page(chapter.current_version, request.user, for_date, device_profile, page_index)
-    # Use X-Accel-Redirect to let nginx serve the file after Django validates access
+
+    # Dev mode: serve file directly (no nginx)
+    if getattr(django_settings, "DEBUG", False):
+        file_path = django_settings.MEDIA_ROOT / page.relative_path
+        if not file_path.is_file():
+            raise Http404
+        response = FileResponse(open(file_path, "rb"), content_type="image/png")
+        response["Content-Disposition"] = f'inline; filename="page-{page_index}.png"'
+        return set_private_no_store(response)
+
+    # Production: X-Accel-Redirect lets nginx serve the file after Django validates access
     response = HttpResponse()
     response["X-Accel-Redirect"] = f"/protected-media/{page.relative_path}"
     response["Content-Type"] = "image/png"

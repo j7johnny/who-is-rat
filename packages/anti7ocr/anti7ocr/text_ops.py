@@ -80,7 +80,20 @@ def transform_text_to_tokens(
     return tokens
 
 
-def wrap_tokens(tokens: Iterable[GlyphToken], max_chars_per_line: int) -> tuple[list[GlyphToken], list[str]]:
+def wrap_tokens(
+    tokens: Iterable[GlyphToken],
+    max_chars_per_line: int,
+    direction: str = "horizontal",
+    max_chars_per_column: int = 20,
+) -> tuple[list[GlyphToken], list[str]]:
+    if direction == "vertical":
+        return _wrap_tokens_vertical(tokens, max_chars_per_column)
+    return _wrap_tokens_horizontal(tokens, max_chars_per_line)
+
+
+def _wrap_tokens_horizontal(
+    tokens: Iterable[GlyphToken], max_chars_per_line: int
+) -> tuple[list[GlyphToken], list[str]]:
     line_index = 0
     char_count = 0
     lines: list[list[str]] = [[]]
@@ -96,9 +109,41 @@ def wrap_tokens(tokens: Iterable[GlyphToken], max_chars_per_line: int) -> tuple[
             char_count = 0
             lines.append([])
         token.line_index = line_index
+        token.char_index = char_count
         wrapped.append(token)
         lines[line_index].append(token.char)
         char_count += 1
     line_strings = ["".join(chars) for chars in lines if chars]
     return wrapped, line_strings
+
+
+def _wrap_tokens_vertical(
+    tokens: Iterable[GlyphToken], max_chars_per_column: int
+) -> tuple[list[GlyphToken], list[str]]:
+    """Wrap tokens into vertical columns (top-to-bottom, right-to-left).
+
+    ``line_index`` represents the column number (0 = rightmost column).
+    ``char_index`` represents the position within the column (0 = topmost).
+    """
+    column_index = 0
+    char_count = 0
+    columns: list[list[str]] = [[]]
+    wrapped: list[GlyphToken] = []
+    for token in tokens:
+        if token.char == "\n":
+            column_index += 1
+            char_count = 0
+            columns.append([])
+            continue
+        if max_chars_per_column > 0 and char_count >= max_chars_per_column:
+            column_index += 1
+            char_count = 0
+            columns.append([])
+        token.line_index = column_index
+        token.char_index = char_count
+        wrapped.append(token)
+        columns[column_index].append(token.char)
+        char_count += 1
+    column_strings = ["".join(chars) for chars in columns if chars]
+    return wrapped, column_strings
 

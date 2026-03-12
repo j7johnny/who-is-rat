@@ -1,61 +1,177 @@
 {% extends "backoffice/base.html" %}
 
-{% block hero_actions %}
-<a class="secondary-button" href="{% url 'backoffice:reader-list' %}">回閱讀者列表</a>
+{% block header_actions %}
+<a href="{% url 'backoffice:reader-list' %}" class="bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">回閱讀者列表</a>
 {% endblock %}
 
 {% block manage_content %}
-<form method="post" class="manage-grid manage-grid--two">
-    {% csrf_token %}
+<form method="post" x-data="readerForm()">
+  {% csrf_token %}
 
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h3>帳號資訊</h3>
-            <p class="subtle">閱讀者不需要自行註冊，這裡由管理者直接建立與維護。</p>
-        </div>
-        {{ account_form.non_field_errors }}
-        {% for field in account_form %}
-            <label class="field">
-                <span>{{ field.label }}</span>
-                {{ field }}
-                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
-                {{ field.errors }}
-            </label>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left: Account info -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+      <h2 class="text-lg font-semibold text-stone-900">帳號資訊</h2>
+      <p class="mt-1 text-sm text-stone-500 mb-5">閱讀者不需要自行註冊，這裡由管理者直接建立與維護。</p>
+
+      {% if account_form.non_field_errors %}
+      <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200">
+        {% for error in account_form.non_field_errors %}
+        <p class="text-sm text-red-700">{{ error }}</p>
         {% endfor %}
-    </section>
+      </div>
+      {% endif %}
 
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h3>授權設定</h3>
-            <p class="subtle">可混合使用全站、指定小說與指定章節授權。</p>
+      <div class="space-y-4">
+        <!-- username -->
+        <div>
+          <label for="id_username" class="block text-sm font-medium text-stone-700 mb-1">{{ account_form.username.label }}</label>
+          <input type="text" name="username" id="id_username"
+                 value="{{ account_form.username.value|default_if_none:'' }}"
+                 maxlength="16"
+                 {% if reader_obj %}readonly class="w-full px-3 py-2 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-500 cursor-not-allowed"{% else %}class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400"{% endif %}>
+          {% if account_form.username.help_text %}
+          <p class="mt-1 text-xs text-stone-400">{{ account_form.username.help_text }}</p>
+          {% endif %}
+          {% for error in account_form.username.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
         </div>
-        {{ access_form.non_field_errors }}
-        <div class="grant-block">
-            <label class="checkbox-line">
-                {{ access_form.grant_full_site }}
-                <span>{{ access_form.grant_full_site.label }}</span>
-            </label>
-            <p class="field-help">{{ access_form.grant_full_site.help_text }}</p>
-            {{ access_form.grant_full_site.errors }}
-        </div>
-        <div class="grant-block">
-            <h4>{{ access_form.novels.label }}</h4>
-            <p class="field-help">{{ access_form.novels.help_text }}</p>
-            <div class="checkbox-list">{{ access_form.novels }}</div>
-            {{ access_form.novels.errors }}
-        </div>
-        <div class="grant-block">
-            <h4>{{ access_form.chapters.label }}</h4>
-            <p class="field-help">{{ access_form.chapters.help_text }}</p>
-            <div class="checkbox-list checkbox-list--chapters">{{ access_form.chapters }}</div>
-            {{ access_form.chapters.errors }}
-        </div>
-    </section>
 
-    <div class="form-actions form-actions--full">
-        <button type="submit" class="primary-button">
-            {% if reader_obj %}儲存閱讀者設定{% else %}建立閱讀者並套用授權{% endif %}
-        </button>
+        <!-- is_active -->
+        <div class="flex items-center gap-3">
+          <input type="checkbox" name="is_active" id="id_is_active"
+                 {% if account_form.is_active.value %}checked{% endif %}
+                 class="w-4 h-4 rounded border-stone-300 text-brand-500 focus:ring-brand-500/25">
+          <label for="id_is_active" class="text-sm font-medium text-stone-700">{{ account_form.is_active.label }}</label>
+        </div>
+
+        <!-- password1 -->
+        <div>
+          <label for="id_password1" class="block text-sm font-medium text-stone-700 mb-1">{{ account_form.password1.label }}</label>
+          <input type="password" name="password1" id="id_password1"
+                 class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400">
+          {% if account_form.password1.help_text %}
+          <p class="mt-1 text-xs text-stone-400">{{ account_form.password1.help_text }}</p>
+          {% endif %}
+          {% for error in account_form.password1.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <!-- password2 -->
+        <div>
+          <label for="id_password2" class="block text-sm font-medium text-stone-700 mb-1">{{ account_form.password2.label }}</label>
+          <input type="password" name="password2" id="id_password2"
+                 class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400">
+          {% for error in account_form.password2.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+      </div>
     </div>
+
+    <!-- Right: Access grants -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+      <h2 class="text-lg font-semibold text-stone-900">授權設定</h2>
+      <p class="mt-1 text-sm text-stone-500 mb-5">可混合使用全站、指定小說與指定章節授權。</p>
+
+      {% if access_form.non_field_errors %}
+      <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200">
+        {% for error in access_form.non_field_errors %}
+        <p class="text-sm text-red-700">{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="space-y-6">
+        <!-- grant_full_site -->
+        <div class="p-4 rounded-lg border border-stone-200 bg-stone-50">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" name="grant_full_site" id="id_grant_full_site"
+                   {% if access_form.grant_full_site.value %}checked{% endif %}
+                   class="w-4 h-4 rounded border-stone-300 text-brand-500 focus:ring-brand-500/25">
+            <label for="id_grant_full_site" class="text-sm font-medium text-stone-900">{{ access_form.grant_full_site.label }}</label>
+          </div>
+          {% if access_form.grant_full_site.help_text %}
+          <p class="mt-2 ml-7 text-xs text-stone-500">{{ access_form.grant_full_site.help_text }}</p>
+          {% endif %}
+          {% for error in access_form.grant_full_site.errors %}
+          <p class="mt-1 ml-7 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <!-- novels -->
+        <div>
+          <h3 class="text-sm font-medium text-stone-700 mb-1">{{ access_form.novels.label }}</h3>
+          {% if access_form.novels.help_text %}
+          <p class="text-xs text-stone-400 mb-3">{{ access_form.novels.help_text }}</p>
+          {% endif %}
+
+          <div x-data="{ novelSearch: '' }">
+            <input type="text" x-model="novelSearch"
+                   placeholder="搜尋小說名稱..."
+                   class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400 mb-2">
+            <div class="max-h-48 overflow-y-auto border border-stone-200 rounded-lg divide-y divide-stone-100">
+              {% for option in access_form.novels %}
+              <label class="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 cursor-pointer text-sm"
+                     x-show="!novelSearch || '{{ option.choice_label }}'.toLowerCase().includes(novelSearch.toLowerCase())">
+                {{ option.tag }}
+                <span class="text-stone-700">{{ option.choice_label }}</span>
+              </label>
+              {% empty %}
+              <p class="px-3 py-4 text-sm text-stone-400 text-center">目前沒有可授權的小說。</p>
+              {% endfor %}
+            </div>
+          </div>
+          {% for error in access_form.novels.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <!-- chapters -->
+        <div>
+          <h3 class="text-sm font-medium text-stone-700 mb-1">{{ access_form.chapters.label }}</h3>
+          {% if access_form.chapters.help_text %}
+          <p class="text-xs text-stone-400 mb-3">{{ access_form.chapters.help_text }}</p>
+          {% endif %}
+
+          <div x-data="{ chapterSearch: '' }">
+            <input type="text" x-model="chapterSearch"
+                   placeholder="搜尋章節名稱..."
+                   class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400 mb-2">
+            <div class="max-h-56 overflow-y-auto border border-stone-200 rounded-lg divide-y divide-stone-100">
+              {% for option in access_form.chapters %}
+              <label class="flex items-center gap-3 px-3 py-2 hover:bg-stone-50 cursor-pointer text-sm"
+                     x-show="!chapterSearch || '{{ option.choice_label }}'.toLowerCase().includes(chapterSearch.toLowerCase())">
+                {{ option.tag }}
+                <span class="text-stone-700">{{ option.choice_label }}</span>
+              </label>
+              {% empty %}
+              <p class="px-3 py-4 text-sm text-stone-400 text-center">目前沒有可授權的章節。</p>
+              {% endfor %}
+            </div>
+          </div>
+          {% for error in access_form.chapters.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <div class="mt-6 flex justify-end">
+    <button type="submit"
+            class="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors">
+      {% if reader_obj %}儲存閱讀者設定{% else %}建立閱讀者並套用授權{% endif %}
+    </button>
+  </div>
 </form>
+
+<script>
+function readerForm() {
+  return {};
+}
+</script>
 {% endblock %}

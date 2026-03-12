@@ -1,32 +1,97 @@
 {% extends "base.html" %}
 
-{% block title %}我的書庫 | CatchingRat{% endblock %}
+{% block title %}我的書庫 | Who-Is-Rat{% endblock %}
 
 {% block content %}
-<section class="stack">
-    <div>
-        <p class="eyebrow">小說列表</p>
-        <h2>我的書庫</h2>
-        <p class="subtle">先選擇小說，再進入該小說的章節列表。</p>
-    </div>
-    {% if novels %}
-        <div class="novel-grid">
-            {% for novel in novels %}
-                <a href="{% url 'reader:novel-detail' novel.id %}" class="novel-card">
-                    <div class="novel-card__meta">
-                        <span class="novel-card__count">{{ novel.chapter_count }} 章</span>
-                    </div>
-                    <h3>{{ novel.title }}</h3>
-                    {% if novel.description %}
-                        <p class="subtle">{{ novel.description }}</p>
-                    {% else %}
-                        <p class="subtle">進入後可查看本小說已授權的章節。</p>
-                    {% endif %}
-                </a>
-            {% endfor %}
+<div class="min-h-screen bg-gradient-to-b from-stone-50 to-amber-50/30">
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-30 border-b border-stone-200/80 bg-white/80 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
         </div>
+        <h1 class="text-lg font-bold text-stone-800 tracking-tight">我的書庫</h1>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <span class="hidden sm:inline text-sm text-stone-500">{{ user.username }}</span>
+        <a href="{% url 'password-change' %}"
+           class="text-sm text-stone-500 hover:text-brand-600 transition" title="修改密碼">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </a>
+        <form method="post" action="{% url 'logout' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit"
+                  class="text-sm text-stone-500 hover:text-red-600 transition font-medium">
+            登出
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    {% if novels %}
+    <!-- Novel Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {% for novel in novels %}
+      <a href="{% url 'reader:novel-detail' novel.id %}"
+         class="group relative bg-white rounded-2xl border border-stone-200/60 shadow-sm
+                hover:shadow-lg hover:shadow-amber-100/50 hover:border-brand-300/50
+                transition-all duration-200 overflow-hidden">
+        <!-- Decorative top accent -->
+        <div class="h-1.5 bg-gradient-to-r from-brand-400 via-amber-400 to-brand-500"></div>
+
+        <div class="p-5 sm:p-6">
+          <!-- Chapter count badge -->
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-1.5 text-xs font-medium text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              {{ novel.chapter_count }} 章
+            </div>
+            <svg class="w-5 h-5 text-stone-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all"
+                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+
+          <!-- Title -->
+          <h2 class="text-lg font-bold text-stone-800 group-hover:text-brand-700 transition-colors leading-snug mb-2">
+            {{ novel.title }}
+          </h2>
+
+          <!-- Description -->
+          {% if novel.description %}
+            <p class="text-sm text-stone-500 leading-relaxed line-clamp-3">{{ novel.description|truncatechars:120 }}</p>
+          {% else %}
+            <p class="text-sm text-stone-400 italic">進入後可查看本小說已授權的章節。</p>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
     {% else %}
-        <p class="subtle">目前尚未授權任何小說或章節。</p>
+    <!-- Empty State -->
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+      <div class="w-20 h-20 rounded-2xl bg-stone-100 flex items-center justify-center mb-6">
+        <svg class="w-10 h-10 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-stone-700 mb-2">書庫是空的</h2>
+      <p class="text-sm text-stone-500 max-w-sm">目前尚未授權任何小說或章節。請聯繫管理員取得閱讀權限。</p>
+    </div>
     {% endif %}
-</section>
+  </div>
+</div>
 {% endblock %}

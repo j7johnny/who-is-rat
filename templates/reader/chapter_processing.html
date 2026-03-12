@@ -1,51 +1,28 @@
 {% extends "base.html" %}
+{% block title %}處理中 — {{ chapter.title }}{% endblock %}
 
-{% block title %}{{ chapter.title }} | CatchingRat{% endblock %}
-{% block body_class %}page-manual-loading{% endblock %}
-
-{% block content %}
-<section class="stack reader-layout">
-    <div class="chapter-hero">
-        <div>
-            <p class="eyebrow">{{ chapter.novel.title }}</p>
-            <h2>{{ chapter.title }}</h2>
-        </div>
+{% block layout %}
+<div class="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+  <div class="max-w-sm w-full text-center">
+    <div class="wir-spinner mx-auto mb-6" style="width:32px;height:32px;border-width:3px"></div>
+    <h1 class="text-lg font-semibold text-stone-900 mb-2">章節正在處理中</h1>
+    <p class="text-sm text-stone-500 mb-1">《{{ chapter.novel.title }}》{{ chapter.title }}</p>
+    <p class="text-xs text-stone-400 mb-2">{{ publish_job.get_status_display }} · {{ publish_job.progress_percent }}%</p>
+    {% if publish_job.step_label %}
+    <p class="text-xs text-stone-400 mb-4">{{ publish_job.step_label }}</p>
+    {% endif %}
+    <div class="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden mb-6">
+      <div class="h-full bg-brand-500 rounded-full wir-progress-fill" style="width:{{ publish_job.progress_percent }}%"></div>
     </div>
-
-    <section class="reader-notice reader-notice--warning reader-notice--strong" aria-live="polite">
-        <strong>本章節正在背景發布，暫時無法閱讀</strong>
-        <p>系統正在重新產生基底圖與閱讀圖片。請等待處理完成後再開啟。</p>
-        <dl class="meta-list">
-            <div>
-                <dt>目前狀態</dt>
-                <dd>{{ publish_job.get_status_display }}</dd>
-            </div>
-            <div>
-                <dt>目前進度</dt>
-                <dd>{{ publish_job.progress_percent }}%</dd>
-            </div>
-            {% if publish_job.step_label %}
-                <div>
-                    <dt>目前步驟</dt>
-                    <dd>{{ publish_job.step_label }}</dd>
-                </div>
-            {% endif %}
-        </dl>
-    </section>
-
-    <nav class="chapter-nav chapter-nav--bottom" aria-label="章節導航">
-        <a class="secondary-button" href="{{ novel_detail_url }}">回到本書章節列表</a>
-        <a class="secondary-button" href="{{ library_url }}">回到書庫</a>
-    </nav>
-</section>
+    <p class="text-xs text-stone-400 mb-6">系統正在產生閱讀頁面，完成後即可閱讀。頁面將自動重新整理。</p>
+    <div class="flex justify-center gap-3">
+      <a href="{{ novel_detail_url }}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">回章節目錄</a>
+      <a href="{{ library_url }}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">回書庫</a>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        if (window.CatchingRat && typeof window.CatchingRat.hideLoading === "function") {
-            window.CatchingRat.hideLoading();
-        }
-    });
-</script>
+<script>setTimeout(function(){ location.reload(); }, 8000);</script>
 {% endblock %}

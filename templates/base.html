@@ -1,149 +1,71 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="h-full">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Who-Is-Rat{% endblock %}</title>
-    <link rel="stylesheet" href="/static/site.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Who-Is-Rat{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Noto Sans TC"', '"Microsoft JhengHei"', '"PingFang TC"', 'system-ui', 'sans-serif'],
+          mono: ['Consolas', '"JetBrains Mono"', 'monospace'],
+        },
+        colors: {
+          brand: {
+            50: '#fef7ee', 100: '#fdedd3', 200: '#f9d7a5',
+            300: '#f5ba6d', 400: '#ef9333', 500: '#ec7b14',
+            600: '#dd600a', 700: '#b7450b', 800: '#923710',
+            900: '#762f10',
+          },
+        },
+      },
+    },
+  }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/site.css">
+  {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
-    <div id="page-loading" class="page-loading" aria-live="polite" aria-label="頁面載入中">
-        <div class="page-loading__panel">
-            <div class="page-loading__spinner"></div>
-            <p>頁面載入中，請稍候。</p>
-        </div>
+<body class="h-full bg-stone-50 text-stone-900 font-sans antialiased {% block body_class %}{% endblock %}">
+
+  {% block layout %}
+  <main class="min-h-full">
+    {% block content %}{% endblock %}
+  </main>
+  {% endblock %}
+
+  <!-- Toast messages -->
+  <div id="messages" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm" hx-swap-oob="true">
+    {% for message in messages %}
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0 translate-y-2"
+         class="px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm border cursor-pointer text-sm font-medium
+                {% if message.tags == 'error' %}bg-red-50/90 border-red-200 text-red-800
+                {% elif message.tags == 'warning' %}bg-amber-50/90 border-amber-200 text-amber-800
+                {% else %}bg-emerald-50/90 border-emerald-200 text-emerald-800{% endif %}"
+         @click="show = false">
+      {{ message }}
     </div>
-    <div class="page-shell">
-        <header class="site-header">
-            <div>
-                <p class="eyebrow">Who-Is-Rat</p>
-                <h1 class="site-title"><a href="/">受保護小說閱讀站</a></h1>
-            </div>
-            {% if request.user.is_authenticated %}
-                <nav class="site-nav">
-                    {% if request.user.role == "reader" %}
-                        <a href="{% url 'reader:library' %}">我的書庫</a>
-                        <a href="{% url 'password-change' %}">修改密碼</a>
-                    {% else %}
-                        <a href="{% url 'backoffice:dashboard' %}">管理後台</a>
-                        <a href="{% url 'backoffice:watermark-extract' %}">浮水印提取</a>
-                        <a href="{% url 'password-change' %}">修改密碼</a>
-                        <a href="/admin/">Django admin</a>
-                    {% endif %}
-                    <a href="{% url 'logout' %}">登出</a>
-                </nav>
-            {% endif %}
-        </header>
-        <section id="messages" class="messages" hx-swap-oob="true">
-            {% for message in messages %}
-                <div class="message {{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        </section>
-        <main class="content-card {% block main_class %}{% endblock %}">
-            {% block content %}{% endblock %}
-        </main>
-        <footer class="site-footer">
-            <span>版本 {{ app_version }}</span>
-            <span>僅供授權閱讀使用</span>
-        </footer>
-    </div>
-    <script src="/static/htmx.min.js"></script>
-    <script>
-        (function () {
-            const loading = document.getElementById("page-loading");
-            const manualHide = document.body.classList.contains("page-manual-loading");
+    {% endfor %}
+  </div>
 
-            const showLoading = function () {
-                if (!loading) {
-                    return;
-                }
-                loading.classList.remove("is-hidden");
-                document.body.classList.add("loading-active");
-            };
-            const hideLoading = function () {
-                if (!loading) {
-                    return;
-                }
-                loading.classList.add("is-hidden");
-                document.body.classList.remove("loading-active");
-            };
-
-            window.CatchingRat = window.CatchingRat || {};
-            window.CatchingRat.hideLoading = hideLoading;
-            window.CatchingRat.showLoading = showLoading;
-            document.body.classList.add("loading-active");
-
-            document.cookie = "viewport_width=" + window.innerWidth + "; path=/; samesite=lax";
-            if (!document.cookie.includes("preferred_device=")) {
-                const preferred = window.innerWidth <= 768 ? "mobile" : "desktop";
-                document.cookie = "preferred_device=" + preferred + "; path=/; samesite=lax";
-            }
-
-            const navigateWithLoading = function (url) {
-                showLoading();
-                window.requestAnimationFrame(function () {
-                    window.requestAnimationFrame(function () {
-                        window.location.assign(url);
-                    });
-                });
-            };
-
-            window.addEventListener("load", function () {
-                if (!manualHide) {
-                    window.setTimeout(hideLoading, 120);
-                }
-            }, { once: true });
-            window.addEventListener("pageshow", function (event) {
-                if (event.persisted || !manualHide) {
-                    hideLoading();
-                }
-            });
-            window.setTimeout(hideLoading, manualHide ? 9000 : 4500);
-
-            document.addEventListener("click", function (event) {
-                const link = event.target.closest("a");
-                if (!link || event.defaultPrevented) {
-                    return;
-                }
-                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-                    return;
-                }
-                if (link.target && link.target !== "_self") {
-                    return;
-                }
-                if (link.hasAttribute("download") || link.dataset.noLoading !== undefined) {
-                    return;
-                }
-                // Skip HTMX-managed links
-                if (link.hasAttribute("hx-get") || link.hasAttribute("hx-post")) {
-                    return;
-                }
-                const href = link.getAttribute("href");
-                if (!href || href.startsWith("#") || href.startsWith("javascript:")) {
-                    return;
-                }
-                const url = new URL(link.href, window.location.href);
-                if (url.origin !== window.location.origin) {
-                    return;
-                }
-                event.preventDefault();
-                navigateWithLoading(url.href);
-            }, true);
-
-            document.addEventListener("submit", function (event) {
-                // Skip HTMX-managed forms
-                if (event.target.hasAttribute("hx-post") || event.target.hasAttribute("hx-get")) {
-                    return;
-                }
-                showLoading();
-            }, true);
-
-            // Hide loading after HTMX swaps
-            document.body.addEventListener("htmx:afterSwap", function () {
-                hideLoading();
-            });
-        })();
-    </script>
-    {% block scripts %}{% endblock %}
+  <script src="/static/htmx.min.js"></script>
+  <script>
+  (function(){
+    document.cookie="viewport_width="+window.innerWidth+";path=/;samesite=lax";
+    if(!document.cookie.includes("preferred_device="))
+      document.cookie="preferred_device="+(window.innerWidth<=768?"mobile":"desktop")+";path=/;samesite=lax";
+  })();
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

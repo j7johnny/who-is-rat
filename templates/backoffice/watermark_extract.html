@@ -1,425 +1,301 @@
 {% extends "backoffice/base.html" %}
 
-{% block hero_actions %}
-<a class="secondary-button" href="{% url 'backoffice:anti7ocr-diagnostics' %}">anti7ocr 診斷</a>
-<a class="secondary-button" href="{% url 'backoffice:dashboard' %}">回到儀表板</a>
+{% block header_actions %}
+<a href="{% url 'backoffice:anti7ocr-diagnostics' %}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50">OCR 診斷</a>
 {% endblock %}
 
 {% block manage_content %}
-<section class="manage-grid manage-grid--two">
-    <form method="post" enctype="multipart/form-data" class="manage-panel">
+<div class="grid lg:grid-cols-3 gap-6">
+
+  <!-- Upload + Recent -->
+  <div class="space-y-6">
+    <!-- Upload form -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-5" x-data="{ dragOver: false }">
+      <h3 class="text-sm font-semibold text-stone-900 mb-3">建立提取任務</h3>
+      <form method="post" enctype="multipart/form-data" id="extract-form">
         {% csrf_token %}
-        <div class="section-heading">
-            <h3>建立提取任務</h3>
-            <p class="subtle">{{ tool_meta.subtitle }}</p>
+        <div class="relative border-2 border-dashed rounded-xl p-6 text-center transition-colors mb-4"
+             :class="dragOver ? 'border-brand-500 bg-brand-50/50' : 'border-stone-300'"
+             @dragover.prevent="dragOver=true" @dragleave="dragOver=false"
+             @drop.prevent="dragOver=false; $refs.fileInput.files=$event.dataTransfer.files">
+          <svg class="w-8 h-8 mx-auto mb-2 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+          </svg>
+          <p class="text-sm text-stone-500 mb-1">拖放圖片到此處，或</p>
+          <label class="text-sm text-brand-500 hover:text-brand-600 cursor-pointer font-medium">
+            選擇檔案
+            <input type="file" name="image" accept="image/*" required class="sr-only" x-ref="fileInput">
+          </label>
         </div>
-        {{ form.non_field_errors }}
-        {% for field in form %}
-            <label class="field">
-                <span>{{ field.label }}</span>
-                {{ field }}
-                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
-                {{ field.errors }}
-            </label>
-        {% endfor %}
-        <div class="form-actions">
-            <button type="submit" class="primary-button">開始提取</button>
-        </div>
-    </form>
-
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h3>最近任務</h3>
-            <p class="subtle">點選任務可查看目前進度、顯影圖片與 Blind 提取結果。</p>
-        </div>
-        <div class="list-stack">
-            {% for record in recent_records %}
-                <a class="list-row {% if active_record and active_record.id == record.id %}list-row--active{% endif %}" href="{% url tool_meta.detail_name record.id %}">
-                    <div>
-                        <strong>#{{ record.id }} {{ record.source_filename }}</strong>
-                        <p class="subtle">
-                            {{ record.get_status_display }} / {{ record.created_at|date:"Y-m-d H:i:s" }}
-                            {% if record.advanced_extraction %} / 已啟用進階提取{% endif %}
-                        </p>
-                    </div>
-                    <span class="status-pill {% if record.is_valid %}is-success{% endif %}">
-                        {% if record.is_valid %}完成{% else %}{{ record.get_status_display }}{% endif %}
-                    </span>
-                </a>
-            {% empty %}
-                <p class="subtle">目前還沒有提取紀錄。</p>
-            {% endfor %}
-        </div>
-    </section>
-</section>
-
-{% if active_record %}
-{{ active_record_json|json_script:"active-record-json" }}
-<section
-    class="manage-panel"
-    id="extract-detail-panel"
-    data-status-url="{% url tool_meta.status_name active_record.id %}"
-    data-stop-url="{% url tool_meta.stop_name active_record.id %}"
->
-    <div class="section-heading">
-        <h3>{{ tool_meta.title }} #{{ active_record.id }}</h3>
-        <p class="subtle">可見浮水印先顯影，Blind Watermark 先做原圖直接提取；若本次勾選進階提取，之後才會繼續更多 Blind 嘗試。</p>
+        <label class="flex items-center gap-2 text-sm text-stone-700 mb-4">
+          <input type="checkbox" name="advanced_extraction" value="true" class="wir-checkbox rounded">
+          啟用進階提取（更多裁切嘗試，耗時較長）
+        </label>
+        <button type="submit" class="w-full px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+          開始提取
+        </button>
+      </form>
     </div>
 
-    <section class="manage-grid manage-grid--two">
-        <div class="manage-panel">
-            <h4>任務資訊</h4>
-            <dl class="meta-list">
-                <div>
-                    <dt>來源檔名</dt>
-                    <dd id="wm-source-filename">{{ active_record.source_filename }}</dd>
-                </div>
-                <div>
-                    <dt>目前狀態</dt>
-                    <dd id="wm-status">{{ active_record.get_status_display }}</dd>
-                </div>
-                <div>
-                    <dt>圖片尺寸</dt>
-                    <dd id="wm-size">{{ active_record.image_width }} x {{ active_record.image_height }}</dd>
-                </div>
-                <div>
-                    <dt>總嘗試次數</dt>
-                    <dd id="wm-attempt-count">{{ active_record.attempt_count }}</dd>
-                </div>
-                <div>
-                    <dt>總耗時</dt>
-                    <dd id="wm-duration">{% if active_record.duration_ms %}{{ active_record.duration_ms }} ms{% else %}尚未完成{% endif %}</dd>
-                </div>
-                <div>
-                    <dt>最後採用方法</dt>
-                    <dd id="wm-method">{{ active_record.selected_method|default:"尚未確定" }}</dd>
-                </div>
-                <div>
-                    <dt>進階提取</dt>
-                    <dd id="wm-advanced">{% if active_record.advanced_extraction %}已啟用{% else %}未啟用{% endif %}</dd>
-                </div>
-            </dl>
-            <div class="form-actions">
-                <button
-                    type="button"
-                    id="wm-stop-button"
-                    class="secondary-button"
-                    {% if active_record.status != "pending" and active_record.status != "running" %}hidden{% endif %}
-                >
-                    停止提取
-                </button>
-                <span id="wm-stop-hint" class="subtle"></span>
+    <!-- Recent records -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-5">
+      <h3 class="text-sm font-semibold text-stone-900 mb-3">最近任務</h3>
+      <div class="space-y-2">
+        {% for record in recent_records %}
+        <a href="{% url tool_meta.detail_name record.id %}"
+           class="block p-3 rounded-lg border transition-colors
+                  {% if active_record and active_record.id == record.id %}border-brand-400 bg-brand-50{% else %}border-stone-200 hover:bg-stone-50{% endif %}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-stone-900 truncate">#{{ record.id }} {{ record.source_filename }}</p>
+              <p class="text-xs text-stone-400">{{ record.created_at|date:"m/d H:i" }}{% if record.advanced_extraction %} · 進階{% endif %}</p>
             </div>
-        </div>
+            {% if record.is_valid %}
+            <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 shrink-0">成功</span>
+            {% elif record.status == 'running' or record.status == 'pending' %}
+            <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 shrink-0">進行中</span>
+            {% else %}
+            <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-500 shrink-0">{{ record.get_status_display }}</span>
+            {% endif %}
+          </div>
+        </a>
+        {% empty %}
+        <p class="text-sm text-stone-400 text-center py-4">尚無提取紀錄</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
 
-        <div class="manage-panel">
-            <h4>最終判定</h4>
-            <dl class="meta-list">
-                <div>
-                    <dt>raw payload</dt>
-                    <dd id="wm-raw">{{ active_record.raw_payload|default:"尚未取得" }}</dd>
-                </div>
-                <div>
-                    <dt>reader_id</dt>
-                    <dd id="wm-reader-id">{{ active_record.parsed_reader_id|default:"尚未取得" }}</dd>
-                </div>
-                <div>
-                    <dt>日期</dt>
-                    <dd id="wm-date">{{ active_record.parsed_yyyymmdd|default:"尚未取得" }}</dd>
-                </div>
-                <div>
-                    <dt>驗證結果</dt>
-                    <dd id="wm-valid">{% if active_record.is_valid %}成功{% else %}尚未成功{% endif %}</dd>
-                </div>
-                <div id="wm-error-wrap" {% if not active_record.error_message %}hidden{% endif %}>
-                    <dt>錯誤訊息</dt>
-                    <dd id="wm-error">{{ active_record.error_message }}</dd>
-                </div>
-            </dl>
-        </div>
-    </section>
+  <!-- Active record detail -->
+  <div class="lg:col-span-2 space-y-6">
+    {% if active_record %}
+    {{ active_record_json|json_script:"active-record-json" }}
 
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h4>可見浮水印顯影</h4>
-            <p class="subtle">這裡只做影像處理，不做 OCR 轉文字。</p>
+    <!-- Result highlight card -->
+    <div class="rounded-xl border-2 p-6 transition-colors" id="result-card"
+         data-status-url="{% url tool_meta.status_name active_record.id %}"
+         data-stop-url="{% url tool_meta.stop_name active_record.id %}">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h3 class="text-lg font-bold text-stone-900">提取結果 #{{ active_record.id }}</h3>
+          <p class="text-sm text-stone-500" id="wm-filename">{{ active_record.source_filename }}</p>
         </div>
-        <div id="wm-visible-gallery" class="watermark-preview-grid">
-            {% for preview in active_record_json.visible_previews %}
-                <article class="manage-panel manage-panel--compact">
-                    <strong>{{ preview.label }}</strong>
-                    <div class="diagnostic-preview">
-                        <img src="{{ preview.preview_url }}" alt="{{ preview.label }}">
-                    </div>
-                    {% if preview.preview_relative_path %}
-                        <p class="subtle">{{ preview.preview_relative_path }}</p>
-                    {% endif %}
-                </article>
-            {% empty %}
-                <p class="subtle">尚未產生可見浮水印顯影圖。</p>
-            {% endfor %}
+        <div class="flex items-center gap-2">
+          <button type="button" id="wm-stop-btn"
+                  class="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100 transition-colors"
+                  {% if active_record.status != "pending" and active_record.status != "running" %}hidden{% endif %}>
+            停止提取
+          </button>
+          <span class="text-xs text-stone-400" id="wm-status-badge"></span>
         </div>
-    </section>
+      </div>
 
-    <section class="manage-grid manage-grid--two">
-        <article class="manage-panel">
-            <div class="section-heading">
-                <h4>Blind Watermark 直接提取</h4>
-                <p class="subtle">先用原圖直接做一次提取，不做額外裁切。</p>
-            </div>
-            <div id="wm-blind-direct" class="blind-result-card">
-                <p class="subtle">尚未開始。</p>
-            </div>
-        </article>
-
-        <article class="manage-panel">
-            <div class="section-heading">
-                <h4>Blind Watermark 進階提取</h4>
-                <p class="subtle">只有本次任務勾選進階提取時，才會顯示後續 Blind 嘗試結果。</p>
-            </div>
-            <div id="wm-blind-advanced" class="blind-result-card">
-                <p class="subtle">{% if active_record.advanced_extraction %}尚未開始。{% else %}本次未啟用進階提取。{% endif %}</p>
-            </div>
-        </article>
-    </section>
-
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h4>處理過程</h4>
-            <p class="subtle">頁面會自動輪詢更新，不會整頁重整。</p>
+      <!-- Key result -->
+      <div class="grid sm:grid-cols-3 gap-4 mb-4">
+        <div class="bg-stone-50 rounded-lg p-4">
+          <p class="text-xs text-stone-500 mb-1">Reader ID</p>
+          <p class="text-lg font-bold text-stone-900 font-mono" id="wm-reader-id">{{ active_record.parsed_reader_id|default:"—" }}</p>
         </div>
-        <div class="process-log" id="wm-process-log">
-            {% for entry in active_record.process_log %}
-                <article class="process-log__entry">
-                    <div class="process-log__meta">
-                        <strong>{{ entry.label|default:"處理步驟" }}</strong>
-                        {% if entry.duration_ms %}<span>{{ entry.duration_ms }} ms</span>{% endif %}
-                    </div>
-                    <p>{{ entry.message }}</p>
-                    {% if entry.raw_preview %}
-                        <code>{{ entry.raw_preview }}</code>
-                    {% endif %}
-                    {% if entry.preview_url %}
-                        <div class="diagnostic-preview">
-                            <img src="{{ entry.preview_url }}" alt="{{ entry.label }}">
-                        </div>
-                    {% endif %}
-                </article>
-            {% empty %}
-                <p class="subtle">尚無處理紀錄。</p>
-            {% endfor %}
+        <div class="bg-stone-50 rounded-lg p-4">
+          <p class="text-xs text-stone-500 mb-1">日期</p>
+          <p class="text-lg font-bold text-stone-900 font-mono" id="wm-date">{{ active_record.parsed_yyyymmdd|default:"—" }}</p>
         </div>
-    </section>
-</section>
-{% endif %}
+        <div class="bg-stone-50 rounded-lg p-4">
+          <p class="text-xs text-stone-500 mb-1">驗證</p>
+          <p class="text-lg font-bold" id="wm-valid">{{ active_record.is_valid|yesno:"成功,未成功" }}</p>
+        </div>
+      </div>
+
+      <!-- Meta info -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div><span class="text-stone-400">狀態</span><p class="font-medium" id="wm-status">{{ active_record.get_status_display }}</p></div>
+        <div><span class="text-stone-400">嘗試次數</span><p class="font-medium" id="wm-attempts">{{ active_record.attempt_count }}</p></div>
+        <div><span class="text-stone-400">耗時</span><p class="font-medium" id="wm-duration">{% if active_record.duration_ms %}{{ active_record.duration_ms }}ms{% else %}—{% endif %}</p></div>
+        <div><span class="text-stone-400">方法</span><p class="font-medium" id="wm-method">{{ active_record.selected_method|default:"—" }}</p></div>
+      </div>
+      <p class="text-xs text-red-500 mt-2" id="wm-error" {% if not active_record.error_message %}hidden{% endif %}>{{ active_record.error_message }}</p>
+    </div>
+
+    <!-- Visible watermark previews -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-5">
+      <h3 class="text-sm font-semibold text-stone-900 mb-3">可見浮水印顯影</h3>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" id="wm-visible-gallery">
+        {% for preview in active_record_json.visible_previews %}
+        <div class="rounded-lg border border-stone-200 overflow-hidden">
+          <img src="{{ preview.preview_url }}" alt="{{ preview.label }}" class="w-full" loading="lazy">
+          <p class="text-xs text-stone-500 px-2 py-1.5 bg-stone-50">{{ preview.label }}</p>
+        </div>
+        {% empty %}
+        <p class="text-sm text-stone-400 col-span-full text-center py-4">尚未產生顯影圖</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Blind watermark results -->
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-5">
+        <h4 class="text-sm font-semibold text-stone-900 mb-2">Blind 直接提取</h4>
+        <div id="wm-blind-direct" class="text-sm text-stone-500">尚未開始。</div>
+      </div>
+      <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-5">
+        <h4 class="text-sm font-semibold text-stone-900 mb-2">Blind 進階提取</h4>
+        <div id="wm-blind-advanced" class="text-sm text-stone-500">
+          {% if active_record.advanced_extraction %}尚未開始。{% else %}本次未啟用。{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Process timeline -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-5" x-data="{ expanded: false }">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-stone-900">處理過程</h3>
+        <button @click="expanded=!expanded" class="text-xs text-brand-500 hover:text-brand-600" x-text="expanded?'收合':'展開'">展開</button>
+      </div>
+      <div class="space-y-2 max-h-64 overflow-y-auto" :class="expanded && 'max-h-none'" id="wm-process-log">
+        {% for entry in active_record.process_log %}
+        <div class="flex items-start gap-2 text-xs py-1.5 border-b border-stone-100 last:border-0">
+          <span class="{% if entry.success %}text-emerald-500{% else %}text-stone-400{% endif %} mt-0.5">●</span>
+          <div class="min-w-0 flex-1">
+            <span class="font-medium text-stone-700">{{ entry.label|default:"步驟" }}</span>
+            <span class="text-stone-400 ml-1">{{ entry.message }}</span>
+            {% if entry.duration_ms %}<span class="text-stone-400 ml-1">· {{ entry.duration_ms }}ms</span>{% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-sm text-stone-400 text-center py-2">尚無紀錄</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-12 text-center">
+      <svg class="w-12 h-12 mx-auto mb-4 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6a2.25 2.25 0 01-2.25-2.25v-1.5M9 12h6m-3-3v6"/>
+      </svg>
+      <h3 class="text-lg font-semibold text-stone-900 mb-1">浮水印提取工具</h3>
+      <p class="text-sm text-stone-500 max-w-md mx-auto">
+        上傳疑似外流的圖片，系統會先產生可見浮水印顯影，再嘗試 Blind Watermark 提取。
+        勾選進階提取可嘗試更多裁切方式，但耗時較長。
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 {% if active_record %}
 <script>
-(() => {
-    const panel = document.getElementById("extract-detail-panel");
-    if (!panel) return;
+(function(){
+  const card = document.getElementById("result-card");
+  if (!card) return;
+  const statusUrl = card.dataset.statusUrl;
+  const stopUrl = card.dataset.stopUrl;
+  const csrf = document.querySelector("#extract-form input[name=csrfmiddlewaretoken]");
+  const csrfToken = csrf ? csrf.value : "";
 
-    const statusUrl = panel.dataset.statusUrl;
-    const stopUrl = panel.dataset.stopUrl;
-    const uploadCsrf = document.querySelector("form input[name=csrfmiddlewaretoken]");
-    const csrfToken = uploadCsrf ? uploadCsrf.value : "";
+  const $ = id => document.getElementById(id);
+  let data = null;
+  try { data = JSON.parse(document.getElementById("active-record-json").textContent); } catch(e) {}
 
-    const parseInitialPayload = () => {
-        const node = document.getElementById("active-record-json");
-        if (!node) return null;
-        try {
-            return JSON.parse(node.textContent);
-        } catch (_) {
-            return null;
-        }
-    };
+  let timer;
+  const esc = s => String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-    const nodes = {
-        status: document.getElementById("wm-status"),
-        size: document.getElementById("wm-size"),
-        attempts: document.getElementById("wm-attempt-count"),
-        duration: document.getElementById("wm-duration"),
-        method: document.getElementById("wm-method"),
-        raw: document.getElementById("wm-raw"),
-        readerId: document.getElementById("wm-reader-id"),
-        date: document.getElementById("wm-date"),
-        valid: document.getElementById("wm-valid"),
-        advanced: document.getElementById("wm-advanced"),
-        errorWrap: document.getElementById("wm-error-wrap"),
-        error: document.getElementById("wm-error"),
-        log: document.getElementById("wm-process-log"),
-        stopButton: document.getElementById("wm-stop-button"),
-        stopHint: document.getElementById("wm-stop-hint"),
-        visibleGallery: document.getElementById("wm-visible-gallery"),
-        blindDirect: document.getElementById("wm-blind-direct"),
-        blindAdvanced: document.getElementById("wm-blind-advanced"),
-    };
+  function renderBlind(result, empty) {
+    if (!result) return `<p class="text-sm text-stone-400">${esc(empty)}</p>`;
+    let h = `<p class="text-sm text-stone-700 font-medium">${esc(result.label||"結果")}</p>`;
+    h += `<p class="text-xs text-stone-500 mt-1">${esc(result.message||"")}</p>`;
+    if (result.reader_id || result.yyyymmdd) {
+      h += `<div class="mt-2 p-2 bg-stone-50 rounded text-xs font-mono">`;
+      h += `<span class="text-brand-600 font-bold">${esc(result.reader_id||"?")}</span>`;
+      h += ` | <span>${esc(result.yyyymmdd||"?")}</span></div>`;
+    }
+    if (result.duration_ms) h += `<p class="text-xs text-stone-400 mt-1">${result.duration_ms}ms</p>`;
+    return h;
+  }
 
-    let currentPayload = parseInitialPayload();
-    let timer = null;
+  function render(d) {
+    if (!d) return;
+    data = d;
+    const running = d.status==="pending"||d.status==="running";
 
-    const escapeHtml = (value) =>
-        String(value ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#39;");
+    // Result card border
+    card.className = "rounded-xl border-2 p-6 transition-colors " +
+      (d.is_valid ? "border-emerald-300 bg-emerald-50/30" : running ? "border-amber-300 bg-amber-50/30" : "border-stone-200 bg-white");
 
-    const renderBlindResult = (result, emptyText) => {
-        if (!result) {
-            return `<p class="subtle">${escapeHtml(emptyText)}</p>`;
-        }
-        const raw = result.raw_preview ? `<code>${escapeHtml(result.raw_preview)}</code>` : "";
-        const parsed = result.reader_id || result.yyyymmdd
-            ? `<dl class="meta-list">
-                    <div><dt>reader_id</dt><dd>${escapeHtml(result.reader_id || "未取得")}</dd></div>
-                    <div><dt>日期</dt><dd>${escapeHtml(result.yyyymmdd || "未取得")}</dd></div>
-               </dl>`
-            : "";
-        const duration = result.duration_ms ? `<span>${escapeHtml(result.duration_ms)} ms</span>` : "";
-        return `
-            <article class="process-log__entry">
-                <div class="process-log__meta">
-                    <strong>${escapeHtml(result.label || "Blind 結果")}</strong>
-                    ${duration}
-                </div>
-                <p>${escapeHtml(result.message || "")}</p>
-                ${result.selected_method ? `<p class="subtle">方法：${escapeHtml(result.selected_method)}</p>` : ""}
-                ${raw}
-                ${parsed}
-            </article>
-        `;
-    };
+    $("wm-reader-id").textContent = d.parsed_reader_id || "—";
+    $("wm-date").textContent = d.parsed_yyyymmdd || "—";
+    const valid = $("wm-valid");
+    valid.textContent = d.is_valid ? "成功" : "未成功";
+    valid.className = "text-lg font-bold " + (d.is_valid ? "text-emerald-600" : "text-stone-400");
 
-    const renderVisibleGallery = (previews) => {
-        if (!nodes.visibleGallery) return;
-        if (!previews || previews.length === 0) {
-            nodes.visibleGallery.innerHTML = '<p class="subtle">尚未產生可見浮水印顯影圖。</p>';
-            return;
-        }
-        nodes.visibleGallery.innerHTML = previews.map((preview) => `
-            <article class="manage-panel manage-panel--compact">
-                <strong>${escapeHtml(preview.label || "顯影結果")}</strong>
-                <div class="diagnostic-preview">
-                    <img src="${escapeHtml(preview.preview_url || "")}" alt="${escapeHtml(preview.label || "顯影結果")}">
-                </div>
-                ${preview.preview_relative_path ? `<p class="subtle">${escapeHtml(preview.preview_relative_path)}</p>` : ""}
-            </article>
-        `).join("");
-    };
+    $("wm-status").textContent = d.status_display || d.status;
+    $("wm-attempts").textContent = d.attempt_count || 0;
+    $("wm-duration").textContent = d.duration_ms ? d.duration_ms+"ms" : "—";
+    $("wm-method").textContent = d.selected_method || "—";
 
-    const renderLog = (entries) => {
-        if (!nodes.log) return;
-        if (!entries || entries.length === 0) {
-            nodes.log.innerHTML = '<p class="subtle">尚無處理紀錄。</p>';
-            return;
-        }
-        nodes.log.innerHTML = entries
-            .map((entry) => {
-                const label = escapeHtml(entry.label || "處理步驟");
-                const duration = entry.duration_ms ? `<span>${escapeHtml(entry.duration_ms)} ms</span>` : "";
-                const message = escapeHtml(entry.message || "");
-                const raw = entry.raw_preview ? `<code>${escapeHtml(entry.raw_preview)}</code>` : "";
-                const preview = entry.preview_url
-                    ? `<div class="diagnostic-preview"><img src="${escapeHtml(entry.preview_url)}" alt="${label}"></div>`
-                    : "";
-                return `
-                    <article class="process-log__entry">
-                        <div class="process-log__meta">
-                            <strong>${label}</strong>
-                            ${duration}
-                        </div>
-                        <p>${message}</p>
-                        ${raw}
-                        ${preview}
-                    </article>
-                `;
-            })
-            .join("");
-    };
+    const err = $("wm-error");
+    err.textContent = d.error_message || "";
+    err.hidden = !d.error_message;
 
-    const render = (payload) => {
-        if (!payload) return;
-        currentPayload = payload;
-        if (nodes.status) nodes.status.textContent = payload.status_display || payload.status || "";
-        if (nodes.size) nodes.size.textContent = `${payload.image_width || 0} x ${payload.image_height || 0}`;
-        if (nodes.attempts) nodes.attempts.textContent = `${payload.attempt_count || 0}`;
-        if (nodes.duration) nodes.duration.textContent = payload.duration_ms ? `${payload.duration_ms} ms` : "尚未完成";
-        if (nodes.method) nodes.method.textContent = payload.selected_method || "尚未確定";
-        if (nodes.raw) nodes.raw.textContent = payload.raw_payload || "尚未取得";
-        if (nodes.readerId) nodes.readerId.textContent = payload.parsed_reader_id || "尚未取得";
-        if (nodes.date) nodes.date.textContent = payload.parsed_yyyymmdd || "尚未取得";
-        if (nodes.valid) nodes.valid.textContent = payload.is_valid ? "成功" : "尚未成功";
-        if (nodes.advanced) nodes.advanced.textContent = payload.advanced_extraction ? "已啟用" : "未啟用";
-        if (nodes.errorWrap) nodes.errorWrap.hidden = !payload.error_message;
-        if (nodes.error) nodes.error.textContent = payload.error_message || "";
-        if (nodes.blindDirect) {
-            nodes.blindDirect.innerHTML = renderBlindResult(payload.blind_direct, "尚未開始。");
-        }
-        if (nodes.blindAdvanced) {
-            nodes.blindAdvanced.innerHTML = renderBlindResult(
-                payload.blind_advanced,
-                payload.advanced_extraction ? "尚未開始。" : "本次未啟用進階提取。"
-            );
-        }
-        renderVisibleGallery(payload.visible_previews || []);
-        renderLog(payload.process_log || []);
+    const stop = $("wm-stop-btn");
+    if (stop) stop.hidden = !running;
 
-        const running = payload.status === "pending" || payload.status === "running";
-        if (nodes.stopButton) nodes.stopButton.hidden = !running;
-        if (nodes.stopHint) {
-            nodes.stopHint.textContent = payload.cancel_requested ? "已送出停止要求，等待目前步驟收尾。" : "";
-        }
-
-        if (timer) {
-            window.clearTimeout(timer);
-            timer = null;
-        }
-        if (running) {
-            timer = window.setTimeout(fetchStatus, 1500);
-        }
-    };
-
-    const fetchStatus = async () => {
-        try {
-            const response = await fetch(statusUrl, {
-                headers: { "X-Requested-With": "XMLHttpRequest" },
-                credentials: "same-origin",
-            });
-            if (!response.ok) return;
-            render(await response.json());
-        } catch (_) {
-            timer = window.setTimeout(fetchStatus, 2500);
-        }
-    };
-
-    if (nodes.stopButton) {
-        nodes.stopButton.addEventListener("click", async () => {
-            nodes.stopButton.disabled = true;
-            try {
-                const response = await fetch(stopUrl, {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": csrfToken,
-                        "X-Requested-With": "XMLHttpRequest",
-                    },
-                    credentials: "same-origin",
-                });
-                if (!response.ok) {
-                    nodes.stopButton.disabled = false;
-                    return;
-                }
-                render(await response.json());
-            } catch (_) {
-                nodes.stopButton.disabled = false;
-            }
-        });
+    // Visible gallery
+    const gal = $("wm-visible-gallery");
+    if (gal && d.visible_previews) {
+      if (d.visible_previews.length === 0) {
+        gal.innerHTML = '<p class="text-sm text-stone-400 col-span-full text-center py-4">尚未產生顯影圖</p>';
+      } else {
+        gal.innerHTML = d.visible_previews.map(p =>
+          `<div class="rounded-lg border border-stone-200 overflow-hidden">` +
+          `<img src="${esc(p.preview_url)}" alt="${esc(p.label)}" class="w-full" loading="lazy">` +
+          `<p class="text-xs text-stone-500 px-2 py-1.5 bg-stone-50">${esc(p.label)}</p></div>`
+        ).join("");
+      }
     }
 
-    render(currentPayload);
+    // Blind results
+    $("wm-blind-direct").innerHTML = renderBlind(d.blind_direct, "尚未開始。");
+    $("wm-blind-advanced").innerHTML = renderBlind(d.blind_advanced,
+      d.advanced_extraction ? "尚未開始。" : "本次未啟用。");
+
+    // Process log
+    const log = $("wm-process-log");
+    if (log && d.process_log) {
+      log.innerHTML = d.process_log.map(e =>
+        `<div class="flex items-start gap-2 text-xs py-1.5 border-b border-stone-100 last:border-0">` +
+        `<span class="${e.success?'text-emerald-500':'text-stone-400'} mt-0.5">●</span>` +
+        `<div class="min-w-0 flex-1"><span class="font-medium text-stone-700">${esc(e.label||"步驟")}</span>` +
+        `<span class="text-stone-400 ml-1">${esc(e.message||"")}</span>` +
+        (e.duration_ms ? `<span class="text-stone-400 ml-1">· ${e.duration_ms}ms</span>` : "") +
+        `</div></div>`
+      ).join("") || '<p class="text-sm text-stone-400 text-center py-2">尚無紀錄</p>';
+    }
+
+    if (timer) clearTimeout(timer);
+    if (running) timer = setTimeout(poll, 1500);
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch(statusUrl, {credentials:"same-origin", cache:"no-store"});
+      if (r.ok) render(await r.json());
+      else if (data && (data.status==="pending"||data.status==="running")) timer = setTimeout(poll, 2500);
+    } catch(e) { timer = setTimeout(poll, 2500); }
+  }
+
+  const stop = $("wm-stop-btn");
+  if (stop) stop.addEventListener("click", async function(){
+    stop.disabled = true;
+    try {
+      const r = await fetch(stopUrl, {method:"POST", headers:{"X-CSRFToken":csrfToken}, credentials:"same-origin"});
+      if (r.ok) render(await r.json());
+    } catch(e) {} finally { stop.disabled = false; }
+  });
+
+  render(data);
 })();
 </script>
 {% endif %}

@@ -24,7 +24,13 @@ class LayoutStage:
             enable_char_to_pinyin=bool(text_cfg.get("enable_char_to_pinyin", False)),
             enable_char_reverse=bool(text_cfg.get("enable_char_reverse", False)),
         )
-        wrapped, lines = wrap_tokens(tokens, int(layout_cfg.get("max_chars_per_line", 0)))
+        direction = str(layout_cfg.get("direction", "horizontal"))
+        wrapped, lines = wrap_tokens(
+            tokens,
+            int(layout_cfg.get("max_chars_per_line", 0)),
+            direction=direction,
+            max_chars_per_column=int(layout_cfg.get("max_chars_per_column", 20)),
+        )
 
         for token in wrapped:
             token.kerning_jitter = ctx.py_rng.uniform(

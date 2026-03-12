@@ -616,7 +616,7 @@ def anti7ocr_diagnostics(request: HttpRequest) -> HttpResponse:
         request,
         "backoffice/anti7ocr_diagnostics.html",
         {
-            "manage_section": "tools",
+            "manage_section": "diagnostics",
             "page_title": "anti7ocr 診斷工具",
             "page_subtitle": "輸入測試文字，系統會產生示範圖並跑 Tesseract OCR 與 CER 分析。",
             "form": form,

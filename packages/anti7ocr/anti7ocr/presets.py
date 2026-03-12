@@ -26,7 +26,9 @@ DEFAULT_CONFIG: dict = {
         "dpi": 96,
     },
     "layout": {
+        "direction": "horizontal",
         "max_chars_per_line": 36,
+        "max_chars_per_column": 20,
         "line_height_multiplier": 1.35,
         "micro_kerning_jitter": 1.25,
         "baseline_jitter": 1.50,
@@ -86,6 +88,7 @@ DEFAULT_CONFIG: dict = {
 PRESETS: dict[str, dict] = {
     "tw_readable": {
         "text": {"char_to_pinyin_ratio": 0.08, "char_reverse_ratio": 0.08},
+        "layout": {"direction": "horizontal"},
         "fragment": {"stroke_fragmentation_prob": 0.18, "closed_structure_break_prob": 0.20},
         "perturb": {
             "edge_jitter_strength": 0.05,
@@ -97,6 +100,7 @@ PRESETS: dict[str, dict] = {
     "tw_balanced": {
         "text": {"char_to_pinyin_ratio": 0.10, "char_reverse_ratio": 0.12},
         "layout": {
+            "direction": "horizontal",
             "micro_kerning_jitter": 1.5,
             "baseline_jitter": 1.6,
             "character_scale_jitter": 0.10,
@@ -117,6 +121,7 @@ PRESETS: dict[str, dict] = {
     },
     "tw_aggressive": {
         "text": {"char_to_pinyin_ratio": 0.14, "char_reverse_ratio": 0.16},
+        "layout": {"direction": "horizontal"},
         "fragment": {"stroke_fragmentation_prob": 0.35, "closed_structure_break_prob": 0.36},
         "perturb": {
             "edge_jitter_strength": 0.12,
@@ -128,6 +133,7 @@ PRESETS: dict[str, dict] = {
     "tw_hardened": {
         "text": {"char_to_pinyin_ratio": 0.18, "char_reverse_ratio": 0.20},
         "layout": {
+            "direction": "horizontal",
             "micro_kerning_jitter": 2.2,
             "baseline_jitter": 2.2,
             "character_scale_jitter": 0.14,
@@ -148,6 +154,70 @@ PRESETS: dict[str, dict] = {
             "watermark_opacity": 34,
             "watermark_density": 0.22,
             "watermark_scale": 0.75,
+        },
+    },
+    # ── Vertical presets (top-to-bottom, right-to-left columns) ──
+    "tw_vertical_readable": {
+        "text": {"char_to_pinyin_ratio": 0.06, "char_reverse_ratio": 0.06},
+        "layout": {
+            "direction": "vertical",
+            "max_chars_per_column": 22,
+            "line_height_multiplier": 1.40,
+            "micro_kerning_jitter": 1.0,
+            "baseline_jitter": 1.2,
+        },
+        "fragment": {"stroke_fragmentation_prob": 0.16, "closed_structure_break_prob": 0.18},
+        "perturb": {
+            "edge_jitter_strength": 0.04,
+            "edge_brightness_noise": 8,
+            "local_contrast_noise": 0.08,
+            "watermark_opacity": 14,
+        },
+    },
+    "tw_vertical_balanced": {
+        "text": {"char_to_pinyin_ratio": 0.10, "char_reverse_ratio": 0.10},
+        "layout": {
+            "direction": "vertical",
+            "max_chars_per_column": 20,
+            "line_height_multiplier": 1.35,
+            "micro_kerning_jitter": 1.4,
+            "baseline_jitter": 1.5,
+            "character_scale_jitter": 0.09,
+        },
+        "fragment": {
+            "stroke_fragmentation_prob": 0.24,
+            "closed_structure_break_prob": 0.26,
+            "max_stroke_fragments": 2,
+        },
+        "perturb": {
+            "edge_jitter_strength": 0.08,
+            "edge_brightness_noise": 14,
+            "local_contrast_noise": 0.15,
+            "watermark_opacity": 20,
+        },
+    },
+    "tw_vertical_aggressive": {
+        "text": {"char_to_pinyin_ratio": 0.14, "char_reverse_ratio": 0.14},
+        "layout": {
+            "direction": "vertical",
+            "max_chars_per_column": 18,
+            "line_height_multiplier": 1.30,
+            "micro_kerning_jitter": 2.0,
+            "baseline_jitter": 2.0,
+            "character_scale_jitter": 0.12,
+        },
+        "fragment": {
+            "stroke_fragmentation_prob": 0.35,
+            "closed_structure_break_prob": 0.36,
+            "max_stroke_fragments": 2,
+            "max_closed_breaks": 2,
+        },
+        "perturb": {
+            "edge_jitter_strength": 0.12,
+            "edge_brightness_noise": 24,
+            "local_contrast_noise": 0.22,
+            "watermark_opacity": 28,
+            "watermark_density": 0.20,
         },
     },
 }

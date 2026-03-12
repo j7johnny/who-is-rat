@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import base64
 from collections import Counter, defaultdict
 import contextlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
+import logging
 import random
 import re
 import time
@@ -18,6 +20,15 @@ from django.utils import timezone
 
 from accounts.models import User
 from library.models import DailyPageCache
+
+# Optional dependency: Reed-Solomon error correction
+try:
+    from reedsolo import RSCodec, ReedSolomonError
+    _rs_available = True
+except ImportError:
+    _rs_available = False
+
+logger = logging.getLogger(__name__)
 
 watermark_pattern = re.compile(r"(?P<reader_id>[A-Za-z0-9_.-]{1,16})\|(?P<yyyymmdd>\d{8})")
 bit_redundancy = 4
@@ -35,6 +46,176 @@ source_match_short_circuit_score = 0.995
 watermark_embed_profiles = (
     {"name": "direct", "seed": carrier_seed, "noise_strength": 0, "grid_strength": 0},
 )
+
+# ---------------------------------------------------------------------------
+# Reed-Solomon error correction helpers
+# ---------------------------------------------------------------------------
+
+_RS_NSYM = 10  # 10 parity symbols -> can correct up to 5 symbol errors
+
+
+def rs_encode_payload(text: str) -> str:
+    """RS-encode *text* and return a base64-encoded string."""
+    if not _rs_available:
+        return text
+    try:
+        codec = RSCodec(_RS_NSYM)
+        encoded_bytes = codec.encode(text.encode("utf-8"))
+        return base64.b85encode(bytes(encoded_bytes)).decode("ascii")
+    except Exception:
+        logger.debug("RS encode failed, falling back to raw payload")
+        return text
+
+
+def rs_decode_payload(encoded: str) -> str | None:
+    """Decode an RS-encoded (base85) string, returning the original text or *None*."""
+    if not _rs_available:
+        return None
+    try:
+        codec = RSCodec(_RS_NSYM)
+        raw_bytes = base64.b85decode(encoded.encode("ascii"))
+        decoded = codec.decode(bytearray(raw_bytes))
+        return bytes(decoded).decode("utf-8")
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Multi-strategy image preprocessing for extraction
+# ---------------------------------------------------------------------------
+
+
+def _preprocess_original(img: np.ndarray) -> np.ndarray:
+    """Return image unchanged (identity strategy)."""
+    return img
+
+
+def _preprocess_denoised(img: np.ndarray) -> np.ndarray:
+    """Apply fast non-local means denoising for colored images."""
+    try:
+        return cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
+    except Exception:
+        return img
+
+
+def _preprocess_sharpened(img: np.ndarray) -> np.ndarray:
+    """Apply unsharp-mask sharpening."""
+    try:
+        blurred = cv2.GaussianBlur(img, (0, 0), sigmaX=3)
+        return cv2.addWeighted(img, 1.5, blurred, -0.5, 0)
+    except Exception:
+        return img
+
+
+def _preprocess_clahe(img: np.ndarray) -> np.ndarray:
+    """Contrast-normalize via CLAHE on the L channel of LAB colour space."""
+    try:
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l_channel, a_channel, b_channel = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        l_channel = clahe.apply(l_channel)
+        merged = cv2.merge([l_channel, a_channel, b_channel])
+        return cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+    except Exception:
+        return img
+
+
+def _preprocess_resize_600(img: np.ndarray) -> np.ndarray | None:
+    """Resize to 600 px wide if not already that width."""
+    if img.shape[1] == 600:
+        return None
+    if img.shape[1] < 300:
+        return None
+    h = max(int(img.shape[0] * 600 / img.shape[1]), minimum_carrier_height(600))
+    return cv2.resize(img, (600, h), interpolation=cv2.INTER_LINEAR)
+
+
+def _preprocess_resize_420(img: np.ndarray) -> np.ndarray | None:
+    """Resize to 420 px wide if not already that width."""
+    if img.shape[1] == 420:
+        return None
+    if img.shape[1] < 210:
+        return None
+    h = max(int(img.shape[0] * 420 / img.shape[1]), minimum_carrier_height(420))
+    return cv2.resize(img, (420, h), interpolation=cv2.INTER_LINEAR)
+
+
+_preprocessing_strategies: list[tuple[str, Callable[[np.ndarray], np.ndarray | None]]] = [
+    ("原圖", _preprocess_original),
+    ("去噪", _preprocess_denoised),
+    ("銳化", _preprocess_sharpened),
+    ("對比正規化", _preprocess_clahe),
+    ("正規化至600px", _preprocess_resize_600),
+    ("正規化至420px", _preprocess_resize_420),
+]
+
+
+def _apply_preprocessing_strategies(image: np.ndarray) -> list[tuple[str, np.ndarray]]:
+    """Return a list of (label, preprocessed_image) for each strategy that succeeds."""
+    results: list[tuple[str, np.ndarray]] = []
+    for label, fn in _preprocessing_strategies:
+        try:
+            processed = fn(image)
+            if processed is not None:
+                results.append((label, processed))
+        except Exception:
+            continue
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Confidence scoring
+# ---------------------------------------------------------------------------
+
+
+def compute_extraction_confidence(
+    *,
+    strategy_results: list[dict | None],
+    rs_decoded: bool,
+    payload_format_valid: bool,
+    reader_exists: bool,
+) -> float:
+    """Compute a confidence score in [0.0, 1.0] for an extraction result.
+
+    Factors:
+    - strategy_agreement: proportion of strategies that agreed on the same result
+    - rs_decoded: whether RS error correction succeeded
+    - payload_format_valid: whether the payload matches the expected format
+    - reader_exists: whether the reader_id exists in the database
+    """
+    # Strategy agreement: count how many non-None results agree
+    non_null = [r for r in strategy_results if r is not None]
+    if not non_null:
+        return 0.0
+
+    raws = [r["raw"] for r in non_null]
+    most_common_count = Counter(raws).most_common(1)[0][1] if raws else 0
+    agreement_ratio = most_common_count / max(len(strategy_results), 1)
+
+    score = 0.0
+    # agreement contributes up to 0.4
+    score += agreement_ratio * 0.4
+    # RS decoding success contributes 0.25
+    if rs_decoded:
+        score += 0.25
+    # Payload format validity contributes 0.2
+    if payload_format_valid:
+        score += 0.2
+    # Reader existence contributes 0.15
+    if reader_exists:
+        score += 0.15
+
+    return min(1.0, max(0.0, score))
+
+
+def _reader_id_exists(reader_id: str) -> bool:
+    """Check whether a reader_id exists in the database."""
+    try:
+        return User.objects.filter(
+            reader_id=reader_id, role=User.Role.READER, is_active=True
+        ).exists()
+    except Exception:
+        return False
 
 
 @dataclass(frozen=True)
@@ -180,7 +361,96 @@ def try_extract_payload(image: np.ndarray) -> tuple[str, dict | None]:
         mode="bit",
     )
     extracted = bits_to_payload(extracted_bits)
+
+    # Attempt RS decoding first — if the payload was RS-encoded, this
+    # will recover the original text even with some corruption.
+    rs_decoded_text = rs_decode_payload(extracted.rstrip("~"))
+    if rs_decoded_text is not None:
+        parsed = parse_watermark_payload(rs_decoded_text)
+        if parsed is not None:
+            return rs_decoded_text, parsed
+
+    # Fall back to raw string matching (backward compatibility)
     return extracted, parse_watermark_payload(extracted)
+
+
+def try_extract_payload_multistrategy(
+    image: np.ndarray,
+) -> tuple[str, dict | None, float, list[dict]]:
+    """Extract watermark using multiple preprocessing strategies with consensus voting.
+
+    Returns (best_raw, best_parsed, confidence, strategy_trace).
+    """
+    strategy_images = _apply_preprocessing_strategies(image)
+    strategy_trace: list[dict] = []
+    strategy_parsed_results: list[dict | None] = []
+    raw_candidates: list[str] = []
+    rs_success = False
+
+    for label, preprocessed in strategy_images:
+        started = time.perf_counter()
+        try:
+            raw, parsed = try_extract_payload(preprocessed)
+        except Exception as exc:
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            strategy_trace.append({
+                "strategy": label,
+                "success": False,
+                "duration_ms": duration_ms,
+                "message": f"預處理策略 {label} 提取失敗：{exc}",
+            })
+            strategy_parsed_results.append(None)
+            continue
+
+        duration_ms = int((time.perf_counter() - started) * 1000)
+
+        # Check if RS decoding was used for this result
+        raw_stripped = raw.rstrip("~") if raw else ""
+        rs_result = rs_decode_payload(raw_stripped)
+        if rs_result is not None and parse_watermark_payload(rs_result) is not None:
+            rs_success = True
+
+        raw_candidates.append(raw)
+        strategy_parsed_results.append(parsed)
+        strategy_trace.append({
+            "strategy": label,
+            "success": parsed is not None,
+            "duration_ms": duration_ms,
+            "message": f"預處理策略 {label} {'成功' if parsed is not None else '未找到'}",
+            "raw_preview": sanitize_raw_payload(raw)[:32] if raw else "",
+        })
+
+    # Consensus voting: find the most common parsed result
+    non_null_parsed = [p for p in strategy_parsed_results if p is not None]
+    best_raw = ""
+    best_parsed: dict | None = None
+
+    if non_null_parsed:
+        raw_counts = Counter(p["raw"] for p in non_null_parsed)
+        best_raw_value = raw_counts.most_common(1)[0][0]
+        best_parsed = next(p for p in non_null_parsed if p["raw"] == best_raw_value)
+        # Find the corresponding raw candidate
+        for i, p in enumerate(strategy_parsed_results):
+            if p is not None and p["raw"] == best_raw_value:
+                best_raw = raw_candidates[i] if i < len(raw_candidates) else ""
+                break
+    elif raw_candidates:
+        best_raw = raw_candidates[0]
+
+    # Compute confidence
+    payload_format_ok = best_parsed is not None
+    reader_ok = False
+    if best_parsed is not None:
+        reader_ok = _reader_id_exists(best_parsed["reader_id"])
+
+    confidence = compute_extraction_confidence(
+        strategy_results=strategy_parsed_results,
+        rs_decoded=rs_success,
+        payload_format_valid=payload_format_ok,
+        reader_exists=reader_ok,
+    )
+
+    return best_raw, best_parsed, confidence, strategy_trace
 
 
 def build_recovery_context(
@@ -429,7 +699,7 @@ def build_trace_entry(*, stage: str, label: str, raw: str, parsed: dict | None, 
 def run_candidate_extraction(candidate_image: np.ndarray, *, stage: str, label: str, context: dict) -> tuple[str, dict | None, dict]:
     started = time.perf_counter()
     try:
-        raw, parsed = try_extract_payload(candidate_image)
+        raw, parsed, confidence, strategy_trace = try_extract_payload_multistrategy(candidate_image)
     except Exception as exc:
         duration_ms = int((time.perf_counter() - started) * 1000)
         trace = {
@@ -445,6 +715,9 @@ def run_candidate_extraction(candidate_image: np.ndarray, *, stage: str, label: 
     recovered = normalize_parsed_candidate(parsed, context) if parsed is not None else recover_candidate_payload(raw, context)
     duration_ms = int((time.perf_counter() - started) * 1000)
     trace = build_trace_entry(stage=stage, label=label, raw=raw, parsed=recovered, duration_ms=duration_ms)
+    trace["confidence"] = round(confidence, 4)
+    if strategy_trace:
+        trace["preprocessing_strategies"] = strategy_trace
     return raw, recovered, trace
 
 
@@ -1443,77 +1716,3 @@ def embed_watermark(
     }
 
 
-def embed_watermark(
-    input_path: str,
-    output_path: str,
-    payload: str,
-    *,
-    expected_reader_id: str | None = None,
-    expected_yyyymmdd: str | None = None,
-) -> dict:
-    payload_bits = payload_to_bits(payload)
-    verification_trace = []
-    last_error = None
-
-    for profile in watermark_embed_profiles:
-        carrier = build_carrier_image(
-            input_path,
-            seed=profile["seed"],
-            noise_strength=profile["noise_strength"],
-            grid_strength=profile["grid_strength"],
-        )
-        for extra_height in (0, 64, 128):
-            watermark = get_watermark_client()
-            watermark.read_img(img=pad_carrier_image(carrier, extra_height=extra_height))
-            watermark.read_wm(payload_bits, mode="bit")
-            try:
-                watermark.embed(filename=output_path)
-            except AssertionError as exc:
-                last_error = exc
-                verification_trace.append(
-                    {
-                        "profile": profile["name"],
-                        "extra_height": extra_height,
-                        "verified": False,
-                        "message": f"embed failed: {exc}",
-                    }
-                )
-                continue
-
-            verification_trace.append(
-                {
-                    "profile": profile["name"],
-                    "extra_height": extra_height,
-                    "verified": True,
-                    "message": "embed completed",
-                }
-            )
-            return {
-                "verified": True,
-                "profile_name": profile["name"],
-                "extra_height": extra_height,
-                "verification_trace": verification_trace,
-                "verification_result": {
-                    "parsed": {
-                        "reader_id": expected_reader_id or "",
-                        "yyyymmdd": expected_yyyymmdd or "",
-                    },
-                    "selected_method": "embed-only",
-                    "is_valid": True,
-                },
-            }
-
-    if last_error is not None:
-        raise last_error
-
-    return {
-        "verified": False,
-        "profile_name": watermark_embed_profiles[-1]["name"],
-        "extra_height": 128,
-        "verification_trace": verification_trace,
-        "verification_result": {
-            "parsed": None,
-            "selected_method": "",
-            "is_valid": False,
-        },
-    }

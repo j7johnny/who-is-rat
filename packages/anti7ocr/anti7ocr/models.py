@@ -16,6 +16,7 @@ class GlyphToken:
     char: str
     reverse: bool = False
     line_index: int = 0
+    char_index: int = 0
     kerning_jitter: float = 0.0
     baseline_jitter: float = 0.0
     scale_jitter: float = 0.0

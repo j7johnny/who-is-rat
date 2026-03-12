@@ -1,65 +1,81 @@
 {% extends "backoffice/base.html" %}
 
-{% block hero_actions %}
-<a class="primary-button" href="{% url 'backoffice:anti-ocr-create' %}">新增設定</a>
-<a class="secondary-button" href="{% url 'backoffice:font-library' %}">管理字體</a>
-<a class="secondary-button" href="{% url 'backoffice:anti7ocr-diagnostics' %}">OCR 診斷</a>
+{% block header_actions %}
+<a href="{% url 'backoffice:anti-ocr-create' %}" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">新增設定</a>
+<a href="{% url 'backoffice:font-library' %}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">管理字體</a>
 {% endblock %}
 
 {% block manage_content %}
-<section class="manage-grid manage-grid--two">
-    <article class="manage-panel">
-        <div class="section-heading">
-            <h3>anti7ocr 設定清單</h3>
-            <p class="subtle">先用「示範圖片」確認閱讀感，再套用到正式章節。</p>
-        </div>
-        <div class="list-stack">
-            {% for item in preset_cards %}
-                <a class="list-row list-row--card" href="{% url 'backoffice:anti-ocr-update' item.preset.id %}">
-                    <div>
-                        <strong>{{ item.preset.name }}</strong>
-                        <p class="subtle">
-                            {% if item.preset.is_default %}目前為全站預設。{% endif %}
-                            基底 preset：{{ item.summary.base_preset_name }}
-                        </p>
-                        <p class="subtle">
-                            桌機 {{ item.summary.desktop_width }}px / {{ item.summary.desktop_font_range }}
-                            ，手機 {{ item.summary.mobile_width }}px / {{ item.summary.mobile_font_range }}
-                        </p>
-                    </div>
-                    <span class="status-pill {% if item.preset.is_default %}is-success{% endif %}">
-                        {% if item.preset.is_default %}預設{% else %}自訂{% endif %}
-                    </span>
-                </a>
-            {% empty %}
-                <p class="subtle">目前還沒有 anti7ocr 設定。</p>
-            {% endfor %}
-        </div>
-    </article>
+<div class="grid lg:grid-cols-2 gap-6">
+  <!-- Preset list -->
+  <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+    <h2 class="text-lg font-semibold text-stone-900 mb-1">Anti-OCR 設定清單</h2>
+    <p class="text-sm text-stone-500 mb-5">先用「示範圖片」確認閱讀感，再套用到正式章節。</p>
 
-    <article class="manage-panel">
-        <div class="section-heading">
-            <h3>字體庫總覽</h3>
-            <p class="subtle">上傳後的字體會同時影響示範圖片、OCR 診斷與正式章節發布。</p>
+    {% if preset_cards %}
+    <div class="space-y-3">
+      {% for item in preset_cards %}
+      <a href="{% url 'backoffice:anti-ocr-update' item.preset.id %}"
+         class="block rounded-lg border border-stone-200 p-4 hover:border-brand-300 hover:shadow-sm transition-all group">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-medium text-stone-900 group-hover:text-brand-600 transition-colors">{{ item.preset.name }}</h3>
+              {% if item.preset.is_default %}
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700">預設</span>
+              {% endif %}
+            </div>
+            <p class="text-xs text-stone-500 mb-1">基底：{{ item.summary.base_preset_name }}</p>
+            <div class="flex gap-4 text-xs text-stone-400">
+              <span>桌機 {{ item.summary.desktop_width }}px / {{ item.summary.desktop_font_range }}</span>
+              <span>手機 {{ item.summary.mobile_width }}px / {{ item.summary.mobile_font_range }}</span>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-stone-300 group-hover:text-brand-400 shrink-0 mt-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+          </svg>
         </div>
-        <div class="list-stack">
-            {% for font in fonts %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ font.name }}</strong>
-                        <p class="subtle">{{ font.font_file.name }}</p>
-                    </div>
-                    <span class="status-pill {% if font.is_active %}is-success{% endif %}">
-                        {% if font.is_active %}啟用中{% else %}停用{% endif %}
-                    </span>
-                </div>
-            {% empty %}
-                <p class="subtle">目前沒有自訂字體，系統會只使用伺服器上的既有字體。</p>
-            {% endfor %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-8 text-stone-400">
+      <p class="text-sm mb-2">目前還沒有 Anti-OCR 設定</p>
+      <a href="{% url 'backoffice:anti-ocr-create' %}" class="text-brand-500 text-sm hover:underline">建立第一組設定</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Font overview -->
+  <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+    <h2 class="text-lg font-semibold text-stone-900 mb-1">字體庫總覽</h2>
+    <p class="text-sm text-stone-500 mb-5">上傳後的字體會同時影響示範圖片、OCR 診斷與正式章節發布。</p>
+
+    {% if fonts %}
+    <div class="space-y-2">
+      {% for font in fonts %}
+      <div class="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-stone-50 transition-colors">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-stone-900">{{ font.name }}</p>
+          <p class="text-xs text-stone-400 truncate">{{ font.font_file.name }}</p>
         </div>
-        <div class="form-actions">
-            <a class="primary-button" href="{% url 'backoffice:font-library' %}">前往字體庫</a>
-        </div>
-    </article>
-</section>
+        {% if font.is_active %}
+        <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">啟用中</span>
+        {% else %}
+        <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-500">停用</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-6 text-stone-400 text-sm">
+      <p>目前沒有自訂字體，系統會使用伺服器上的既有字體。</p>
+    </div>
+    {% endif %}
+
+    <div class="mt-5 pt-4 border-t border-stone-100">
+      <a href="{% url 'backoffice:font-library' %}" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors inline-block">前往字體庫</a>
+    </div>
+  </div>
+</div>
 {% endblock %}

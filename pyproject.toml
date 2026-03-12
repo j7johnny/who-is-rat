@@ -26,6 +26,7 @@ dependencies = [
     "pypinyin>=0.53",
     "opencv-python-headless>=4.9",
     "numpy>=1.26",
+    "reedsolo>=1.7",
 ]
 
 [project.optional-dependencies]

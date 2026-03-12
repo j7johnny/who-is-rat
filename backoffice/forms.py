@@ -19,7 +19,7 @@ from library.models import (
 )
 
 
-USERNAME_HELP = "帳號同時也是 reader_id，僅允許 A-Z、a-z、0-9、底線、點與連字號，長度 1 到 16。"
+USERNAME_HELP = "僅允許 A-Z、a-z、0-9、底線、點與連字號，長度 1 到 16。"
 
 
 class SetupAdminForm(forms.Form):

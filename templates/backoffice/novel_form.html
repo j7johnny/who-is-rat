@@ -1,112 +1,114 @@
 {% extends "backoffice/base.html" %}
 
-{% block hero_actions %}
-<a class="secondary-button" href="{% url 'backoffice:novel-list' %}">回到小說列表</a>
+{% block header_actions %}
+<a href="{% url 'backoffice:novel-list' %}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">回到小說列表</a>
 {% if novel %}
-    <a class="primary-button" href="{% url 'backoffice:chapter-create' %}?novel={{ novel.id }}">新增章節</a>
+<a href="{% url 'backoffice:chapter-create' %}?novel={{ novel.id }}" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">新增章節</a>
 {% endif %}
 {% endblock %}
 
 {% block manage_content %}
-<section class="manage-grid manage-grid--two">
-    <form method="post" class="manage-panel">
-        {% csrf_token %}
-        <div class="section-heading">
-            <h3>{% if novel %}小說資料{% else %}新增小說{% endif %}</h3>
-            <p class="subtle">建立小說後可新增章節並做背景發布。</p>
-        </div>
-        {{ form.non_field_errors }}
-        {% for field in form %}
-            <label class="field">
-                <span>{{ field.label }}</span>
-                {{ field }}
-                {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
-                {{ field.errors }}
-            </label>
-        {% endfor %}
-        <div class="form-actions">
-            <button type="submit" class="primary-button">{% if novel %}更新小說{% else %}建立小說{% endif %}</button>
-        </div>
-    </form>
+<div class="grid lg:grid-cols-2 gap-6">
+  <!-- Novel form -->
+  <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+    <h2 class="text-lg font-semibold text-stone-900 mb-1">{% if novel %}小說資料{% else %}新增小說{% endif %}</h2>
+    <p class="text-sm text-stone-500 mb-5">建立小說後可新增章節並做背景發布。</p>
 
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h3>章節列表</h3>
-            <p class="subtle">點擊背景發布後，按鈕會立即改為排程中避免重複送出。</p>
-        </div>
-        {% if novel %}
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>排序</th>
-                            <th>章節</th>
-                            <th>狀態</th>
-                            <th>版本</th>
-                            <th>動作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for chapter in chapters %}
-                            {% with job=chapter.publish_job %}
-                            <tr>
-                                <td>{{ chapter.sort_order }}</td>
-                                <td>
-                                    <strong>{{ chapter.title }}</strong>
-                                    {% if job %}
-                                        <p class="subtle">發布中：{{ job.step_label|default:"處理中" }} / {{ job.progress_percent }}%</p>
-                                    {% endif %}
-                                </td>
-                                <td>{{ chapter.get_status_display }}</td>
-                                <td>{% if chapter.current_version %}v{{ chapter.current_version.version_number }}{% else %}尚未發布{% endif %}</td>
-                                <td class="actions-cell">
-                                    <a class="secondary-button" href="{% url 'backoffice:chapter-detail' chapter.id %}">編輯</a>
-                                    <form method="post" action="{% url 'backoffice:chapter-publish' chapter.id %}" class="js-chapter-publish-form">
-                                        {% csrf_token %}
-                                        <button
-                                            type="submit"
-                                            class="primary-button js-chapter-publish-button"
-                                            {% if job %}disabled aria-disabled="true"{% endif %}
-                                        >
-                                            {% if job %}排程中...{% else %}背景發布{% endif %}
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endwith %}
-                        {% empty %}
-                            <tr>
-                                <td colspan="5">目前沒有章節</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    {% if form.non_field_errors %}
+    <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-stone-700 mb-1">{{ field.label }}</label>
+        {% if field.field.widget.input_type == 'checkbox' %}
+          <label class="inline-flex items-center gap-2 text-sm">
+            {{ field }} <span>{{ field.label }}</span>
+          </label>
         {% else %}
-            <p class="subtle">先建立小說後再新增章節。</p>
+          <input type="{{ field.field.widget.input_type|default:'text' }}" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                 value="{{ field.value|default:'' }}" {% if field.field.required %}required{% endif %}
+                 class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400">
         {% endif %}
-    </section>
-</section>
-{% endblock %}
+        {% if field.help_text %}<p class="mt-1 text-xs text-stone-400">{{ field.help_text }}</p>{% endif %}
+        {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+        {% if novel %}更新小說{% else %}建立小說{% endif %}
+      </button>
+    </form>
+  </div>
 
-{% block scripts %}
-<script>
-(() => {
-    const forms = document.querySelectorAll(".js-chapter-publish-form");
-    forms.forEach((form) => {
-        form.addEventListener("submit", (event) => {
-            if (form.dataset.submitted === "1") {
-                event.preventDefault();
-                return;
-            }
-            form.dataset.submitted = "1";
-            const button = form.querySelector(".js-chapter-publish-button");
-            if (button) {
-                button.disabled = true;
-                button.textContent = "排程中...";
-            }
-        });
-    });
-})();
-</script>
+  <!-- Chapters table -->
+  <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+    <h2 class="text-lg font-semibold text-stone-900 mb-1">章節列表</h2>
+    <p class="text-sm text-stone-500 mb-5">點擊背景發布後，系統會在背景產生基底圖。</p>
+    {% if novel and chapters %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-stone-200">
+            <th class="text-left text-stone-500 font-medium py-2 px-2">#</th>
+            <th class="text-left text-stone-500 font-medium py-2 px-2">章節</th>
+            <th class="text-left text-stone-500 font-medium py-2 px-2">狀態</th>
+            <th class="text-left text-stone-500 font-medium py-2 px-2">版本</th>
+            <th class="text-right text-stone-500 font-medium py-2 px-2">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for chapter in chapters %}
+          {% with job=chapter.publish_job %}
+          <tr class="border-b border-stone-100 hover:bg-stone-50">
+            <td class="py-3 px-2 text-stone-400">{{ chapter.sort_order }}</td>
+            <td class="py-3 px-2">
+              <p class="font-medium text-stone-900">{{ chapter.title }}</p>
+              {% if job %}
+              <p class="text-xs text-amber-600 mt-0.5">{{ job.step_label|default:"處理中" }} · {{ job.progress_percent }}%</p>
+              {% endif %}
+            </td>
+            <td class="py-3 px-2">
+              {% if chapter.status == 'published' %}
+              <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">已發布</span>
+              {% else %}
+              <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600">草稿</span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-2 text-stone-500">
+              {% if chapter.current_version %}v{{ chapter.current_version.version_number }}{% else %}—{% endif %}
+            </td>
+            <td class="py-3 px-2 text-right">
+              <div class="flex gap-2 justify-end">
+                <a href="{% url 'backoffice:chapter-detail' chapter.id %}" class="px-3 py-1.5 rounded-lg border border-stone-300 text-xs hover:bg-stone-50 transition-colors">編輯</a>
+                <form method="post" action="{% url 'backoffice:chapter-publish' chapter.id %}" class="inline"
+                      onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='排程中…'">
+                  {% csrf_token %}
+                  <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                                                {% if job %}bg-stone-100 text-stone-400 cursor-not-allowed{% else %}bg-brand-500 hover:bg-brand-600 text-white{% endif %}"
+                          {% if job %}disabled{% endif %}>
+                    {% if job %}排程中…{% else %}發布{% endif %}
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% elif novel %}
+    <div class="text-center py-8 text-stone-400">
+      <p class="text-sm">尚未有章節</p>
+      <a href="{% url 'backoffice:chapter-create' %}?novel={{ novel.id }}" class="text-brand-500 text-sm hover:underline mt-1 inline-block">新增第一個章節</a>
+    </div>
+    {% else %}
+    <div class="text-center py-8 text-stone-400 text-sm">先建立小說後再新增章節。</div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

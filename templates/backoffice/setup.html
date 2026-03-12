@@ -1,30 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}{{ page_title }} | CatchingRat{% endblock %}
+{% block title %}{{ page_title }} — Who-Is-Rat{% endblock %}
+
+{% block body_class %}flex items-center justify-center{% endblock %}
 
 {% block content %}
-<section class="stack">
-    <div class="manage-panel setup-panel">
-        <div class="section-heading">
-            <p class="eyebrow">First Run Setup</p>
-            <h2>{{ page_title }}</h2>
-            <p class="subtle">{{ page_subtitle }}</p>
-        </div>
-        <form method="post" class="form-card">
-            {% csrf_token %}
-            {{ form.non_field_errors }}
-            {% for field in form %}
-                <label class="field">
-                    <span>{{ field.label }}</span>
-                    {{ field }}
-                    {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
-                    {{ field.errors }}
-                </label>
-            {% endfor %}
-            <div class="form-actions">
-                <button type="submit" class="primary-button">建立管理者</button>
-            </div>
-        </form>
+<div class="w-full max-w-md mx-auto px-4 py-12">
+  <!-- Brand -->
+  <div class="text-center mb-8">
+    <div class="inline-flex w-14 h-14 rounded-2xl bg-brand-500 items-center justify-center mb-4">
+      <span class="text-white font-bold text-2xl">鼠</span>
     </div>
-</section>
+    <h1 class="text-2xl font-bold text-stone-900">{{ page_title }}</h1>
+    <p class="mt-2 text-sm text-stone-500">{{ page_subtitle }}</p>
+  </div>
+
+  <!-- Setup card -->
+  <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+    <form method="post">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200">
+        {% for error in form.non_field_errors %}
+        <p class="text-sm text-red-700">{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="space-y-4">
+        <!-- username -->
+        <div>
+          <label for="id_username" class="block text-sm font-medium text-stone-700 mb-1">{{ form.username.label }}</label>
+          <input type="text" name="username" id="id_username"
+                 value="{{ form.username.value|default_if_none:'' }}"
+                 maxlength="16"
+                 class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400"
+                 placeholder="例如 admin">
+          {% if form.username.help_text %}
+          <p class="mt-1 text-xs text-stone-400">{{ form.username.help_text }}</p>
+          {% endif %}
+          {% for error in form.username.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <!-- password1 -->
+        <div>
+          <label for="id_password1" class="block text-sm font-medium text-stone-700 mb-1">{{ form.password1.label }}</label>
+          <input type="password" name="password1" id="id_password1"
+                 class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400">
+          {% for error in form.password1.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <!-- password2 -->
+        <div>
+          <label for="id_password2" class="block text-sm font-medium text-stone-700 mb-1">{{ form.password2.label }}</label>
+          <input type="password" name="password2" id="id_password2"
+                 class="w-full px-3 py-2 rounded-lg border border-stone-300 text-sm focus:ring-2 focus:ring-brand-500/25 focus:border-brand-400">
+          {% for error in form.password2.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit"
+              class="mt-6 w-full bg-brand-500 hover:bg-brand-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+        建立管理者
+      </button>
+    </form>
+  </div>
+
+  <p class="mt-6 text-center text-xs text-stone-400">
+    Who-Is-Rat 內容保護平台 — 初始設定
+  </p>
+</div>
 {% endblock %}

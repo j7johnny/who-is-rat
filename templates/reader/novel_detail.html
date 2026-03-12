@@ -1,51 +1,98 @@
 {% extends "base.html" %}
 
-{% block title %}{{ novel.title }} | CatchingRat{% endblock %}
+{% block title %}{{ novel.title }} | Who-Is-Rat{% endblock %}
 
 {% block content %}
-<section class="stack">
-    <div class="chapter-hero">
+<div class="min-h-screen bg-gradient-to-b from-stone-50 to-amber-50/30">
+  <!-- Header -->
+  <header class="sticky top-0 z-30 border-b border-stone-200/80 bg-white/80 backdrop-blur-md">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <a href="{% url 'reader:library' %}"
+         class="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-brand-600 transition">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        回到書庫
+      </a>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-stone-500">{{ user.username }}</span>
+        <form method="post" action="{% url 'logout' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="text-sm text-stone-500 hover:text-red-600 transition font-medium">登出</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <!-- Novel Hero -->
+    <div class="mb-8">
+      <div class="flex items-start justify-between gap-4">
         <div>
-            <p class="eyebrow">章節列表</p>
-            <h2>{{ novel.title }}</h2>
-            {% if novel.description %}
-                <p class="subtle">{{ novel.description }}</p>
-            {% endif %}
+          <p class="text-xs font-medium text-brand-600 uppercase tracking-wider mb-1">章節列表</p>
+          <h1 class="text-2xl sm:text-3xl font-bold text-stone-800 tracking-tight">{{ novel.title }}</h1>
+          {% if novel.description %}
+            <p class="mt-3 text-sm sm:text-base text-stone-500 leading-relaxed max-w-2xl">{{ novel.description }}</p>
+          {% endif %}
         </div>
-        <a href="{% url 'reader:library' %}" class="secondary-button">回到書庫</a>
+      </div>
     </div>
 
+    <!-- Processing notice -->
     {% if has_processing_chapters %}
-        <section class="reader-notice reader-notice--warning" aria-live="polite">
-            <strong>本小說目前有章節正在背景發布</strong>
-            <p>共有 {{ processing_chapter_count }} 個章節正在處理中。處理完成前暫時無法閱讀，請稍後再試。</p>
-        </section>
+    <div class="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200/80">
+      <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <div>
+        <p class="font-semibold text-amber-800 text-sm">本小說有章節正在處理中</p>
+        <p class="text-sm text-amber-700 mt-0.5">共 {{ processing_chapter_count }} 個章節正在背景發布，處理完成前暫時無法閱讀。</p>
+      </div>
+    </div>
     {% endif %}
 
-    <div class="chapter-list">
-        {% for entry in chapter_entries %}
-            {% if entry.publish_job %}
-                <div class="chapter-link chapter-link--disabled" aria-disabled="true">
-                    <span class="chapter-index">{{ entry.chapter.sort_order|stringformat:"02d" }}</span>
-                    <span class="chapter-link__content">
-                        <strong>{{ entry.chapter.title }}</strong>
-                        <small class="subtle">
-                            背景發布中，暫時無法閱讀。{{ entry.publish_job.get_status_display }}
-                            / {{ entry.publish_job.progress_percent }}%
-                            {% if entry.publish_job.step_label %}/ {{ entry.publish_job.step_label }}{% endif %}
-                        </small>
-                    </span>
-                    <span class="status-pill">處理中</span>
-                </div>
-            {% else %}
-                <a href="{% url 'reader:chapter-detail' entry.chapter.id %}" class="chapter-link">
-                    <span class="chapter-index">{{ entry.chapter.sort_order|stringformat:"02d" }}</span>
-                    <span class="chapter-link__content">
-                        <strong>{{ entry.chapter.title }}</strong>
-                    </span>
-                </a>
-            {% endif %}
-        {% endfor %}
+    <!-- Chapter List -->
+    <div class="space-y-2">
+      {% for entry in chapter_entries %}
+        {% if entry.publish_job %}
+        <!-- Processing chapter -->
+        <div class="flex items-center gap-4 px-4 sm:px-5 py-4 rounded-xl bg-white/60 border border-stone-200/40
+                    opacity-60 cursor-not-allowed" aria-disabled="true">
+          <span class="flex-shrink-0 w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center
+                       text-sm font-bold text-stone-400 tabular-nums">
+            {{ entry.chapter.sort_order|stringformat:"02d" }}
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-stone-500 truncate">{{ entry.chapter.title }}</p>
+            <p class="text-xs text-stone-400 mt-0.5">
+              背景發布中 &middot; {{ entry.publish_job.get_status_display }} &middot; {{ entry.publish_job.progress_percent }}%
+              {% if entry.publish_job.step_label %} &middot; {{ entry.publish_job.step_label }}{% endif %}
+            </p>
+          </div>
+          <span class="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+            處理中
+          </span>
+        </div>
+        {% else %}
+        <!-- Readable chapter -->
+        <a href="{% url 'reader:chapter-detail' entry.chapter.id %}"
+           class="group flex items-center gap-4 px-4 sm:px-5 py-4 rounded-xl bg-white border border-stone-200/60
+                  shadow-sm hover:shadow-md hover:border-brand-300/50 transition-all duration-150">
+          <span class="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-50 group-hover:bg-brand-100
+                       flex items-center justify-center text-sm font-bold text-brand-600 tabular-nums transition">
+            {{ entry.chapter.sort_order|stringformat:"02d" }}
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-stone-800 group-hover:text-brand-700 transition truncate">{{ entry.chapter.title }}</p>
+          </div>
+          <svg class="w-5 h-5 text-stone-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all flex-shrink-0"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+        {% endif %}
+      {% endfor %}
     </div>
-</section>
+  </div>
+</div>
 {% endblock %}

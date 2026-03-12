@@ -1,105 +1,136 @@
 {% extends "backoffice/base.html" %}
 
-{% block hero_actions %}
-<a class="secondary-button" href="{% url 'backoffice:anti-ocr-list' %}">回設定列表</a>
-<a class="secondary-button" href="{% url 'backoffice:font-library' %}">管理字體</a>
-<a class="secondary-button" href="{% url 'backoffice:anti7ocr-diagnostics' %}">OCR 診斷</a>
+{% block header_actions %}
+<a href="{% url 'backoffice:anti-ocr-list' %}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">回設定列表</a>
+<a href="{% url 'backoffice:font-library' %}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">管理字體</a>
+<a href="{% url 'backoffice:anti7ocr-diagnostics' %}" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">OCR 診斷</a>
 {% endblock %}
 
 {% block manage_content %}
-<section class="manage-grid manage-grid--two">
-    <form method="post" class="manage-panel">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
+<div class="grid lg:grid-cols-5 gap-6">
+  <!-- Form (wider) -->
+  <form method="post" class="lg:col-span-3 space-y-6">
+    {% csrf_token %}
 
-        <div class="bo-hint-grid">
-            <article class="bo-hint-card">
-                <strong>閱讀優先</strong>
-                <p class="subtle">建議先維持拼音與倒字關閉，優先靠背景、碎裂與邊緣擾動提高 OCR 難度。</p>
-            </article>
-            <article class="bo-hint-card">
-                <strong>示範圖片先看</strong>
-                <p class="subtle">修改參數後可先產生示範圖片，確認肉眼閱讀是否仍然舒服，再按儲存。</p>
-            </article>
+    <!-- Hint cards -->
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <p class="text-sm font-medium text-amber-800 mb-1">閱讀優先</p>
+        <p class="text-xs text-amber-600">建議先維持拼音與倒字關閉，優先靠背景、碎裂與邊緣擾動提高 OCR 難度。</p>
+      </div>
+      <div class="rounded-lg border border-sky-200 bg-sky-50 p-4">
+        <p class="text-sm font-medium text-sky-800 mb-1">示範圖片先看</p>
+        <p class="text-xs text-sky-600">修改參數後可先產生示範圖片，確認肉眼閱讀仍然舒服再按儲存。</p>
+      </div>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Grouped fields -->
+    {% for group in form.grouped_fields %}
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+      <h3 class="text-base font-semibold text-stone-900 mb-0.5">{{ group.title }}</h3>
+      <p class="text-sm text-stone-500 mb-4">{{ group.description }}</p>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        {% for field in group.fields %}
+        <div class="{% if field.name == 'preview_text' or field.name == 'closed_structure_chars' %}sm:col-span-2{% endif %}">
+          <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-stone-700 mb-1">{{ field.label }}</label>
+          {% if field.field.widget.input_type == 'checkbox' %}
+            <label class="inline-flex items-center gap-2 text-sm">
+              {{ field }} <span class="text-stone-600">{{ field.label }}</span>
+            </label>
+          {% else %}
+            {{ field }}
+          {% endif %}
+          {% if field.help_text %}<p class="mt-1 text-xs text-stone-400">{{ field.help_text }}</p>{% endif %}
+          {% for error in field.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
         </div>
-
-        {% for group in form.grouped_fields %}
-            <section class="preset-section">
-                <div class="section-heading">
-                    <h3>{{ group.title }}</h3>
-                    <p class="subtle">{{ group.description }}</p>
-                </div>
-                <div class="manage-grid manage-grid--two">
-                    {% for field in group.fields %}
-                        <label class="field {% if field.name == 'preview_text' or field.name == 'closed_structure_chars' %}field--full{% endif %}">
-                            <span>{{ field.label }}</span>
-                            {{ field }}
-                            {% if field.help_text %}<small class="field-help">{{ field.help_text }}</small>{% endif %}
-                            {{ field.errors }}
-                        </label>
-                    {% endfor %}
-                </div>
-            </section>
         {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
 
-        <div class="form-actions">
-            <button type="submit" name="action" value="preview" class="secondary-button">產生示範圖片</button>
-            <button type="submit" name="action" value="save" class="primary-button">儲存設定</button>
+    <!-- Actions -->
+    <div class="flex gap-3">
+      <button type="submit" name="action" value="preview"
+              class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-700 text-sm hover:bg-stone-50 transition-colors">
+        產生示範圖片
+      </button>
+      <button type="submit" name="action" value="save"
+              class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+        儲存設定
+      </button>
+    </div>
+  </form>
+
+  <!-- Sidebar: preview + fonts -->
+  <div class="lg:col-span-2 space-y-6">
+    <!-- Preview result -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+      <h3 class="text-base font-semibold text-stone-900 mb-1">示範圖片</h3>
+      <p class="text-sm text-stone-500 mb-4">先確認肉眼閱讀感再按儲存。</p>
+
+      {% if preview_result %}
+      <div class="rounded-lg overflow-hidden border border-stone-200 mb-4">
+        <img src="{{ preview_result.image_url }}" alt="anti7ocr 示範圖片" class="w-full">
+      </div>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <dt class="text-stone-500">Seed</dt>
+          <dd class="text-stone-900 font-mono text-xs">{{ preview_result.seed }}</dd>
         </div>
-    </form>
-
-    <section class="manage-panel">
-        <div class="section-heading">
-            <h3>右側輔助資訊</h3>
-            <p class="subtle">先用示範圖片判斷閱讀感，再決定是否要進一步提高防 OCR 強度。</p>
+        <div class="flex justify-between">
+          <dt class="text-stone-500">輸出路徑</dt>
+          <dd class="text-stone-900 text-xs truncate max-w-[160px]">{{ preview_result.relative_path }}</dd>
         </div>
-
-        {% if preview_result %}
-            <div class="diagnostic-preview">
-                <img src="{{ preview_result.image_url }}" alt="anti7ocr 示範圖片">
-            </div>
-            <dl class="meta-list">
-                <div>
-                    <dt>seed</dt>
-                    <dd>{{ preview_result.seed }}</dd>
-                </div>
-                <div>
-                    <dt>輸出路徑</dt>
-                    <dd>{{ preview_result.relative_path }}</dd>
-                </div>
-                {% if preview_result.font_paths %}
-                <div>
-                    <dt>本次示範字體</dt>
-                    <dd>{{ preview_result.font_paths|join:"、" }}</dd>
-                </div>
-                {% endif %}
-            </dl>
-        {% else %}
-            <div class="bo-empty-state">
-                <strong>尚未產生示範圖片</strong>
-                <p class="subtle">請先填入或保留示範文字，按下「產生示範圖片」。</p>
-            </div>
+        {% if preview_result.font_paths %}
+        <div>
+          <dt class="text-stone-500 mb-1">本次示範字體</dt>
+          <dd class="text-xs text-stone-700">{{ preview_result.font_paths|join:"、" }}</dd>
+        </div>
         {% endif %}
+      </dl>
+      {% else %}
+      <div class="text-center py-8 text-stone-400">
+        <svg class="w-10 h-10 mx-auto mb-2 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 6v12.75A2.25 2.25 0 003.75 21z"/>
+        </svg>
+        <p class="text-sm">尚未產生示範圖片</p>
+        <p class="text-xs mt-1">按下「產生示範圖片」查看效果</p>
+      </div>
+      {% endif %}
+    </div>
 
-        <div class="section-heading">
-            <h3>目前可用字體</h3>
-            <p class="subtle">正式發布與示範圖片都會共用這些字體來源。</p>
+    <!-- Available fonts -->
+    <div class="bg-white rounded-xl border border-stone-200 shadow-sm p-6">
+      <h3 class="text-base font-semibold text-stone-900 mb-1">目前可用字體</h3>
+      <p class="text-sm text-stone-500 mb-4">正式發布與示範圖片都會共用這些字體。</p>
+
+      {% if fonts %}
+      <div class="space-y-2">
+        {% for font in fonts %}
+        <div class="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-stone-50">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-stone-900">{{ font.name }}</p>
+            <p class="text-xs text-stone-400 truncate">{{ font.font_file.name }}</p>
+          </div>
+          {% if font.is_active %}
+          <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">啟用</span>
+          {% else %}
+          <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-500">停用</span>
+          {% endif %}
         </div>
-        <div class="list-stack">
-            {% for font in fonts %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ font.name }}</strong>
-                        <p class="subtle">{{ font.font_file.name }}</p>
-                    </div>
-                    <span class="status-pill {% if font.is_active %}is-success{% endif %}">
-                        {% if font.is_active %}啟用中{% else %}停用{% endif %}
-                    </span>
-                </div>
-            {% empty %}
-                <p class="subtle">尚未上傳自訂字體，目前只會使用伺服器上的字體。</p>
-            {% endfor %}
-        </div>
-    </section>
-</section>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-stone-400 text-center py-4">尚未上傳自訂字體</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
 {% endblock %}

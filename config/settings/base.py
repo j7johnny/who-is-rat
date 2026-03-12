@@ -111,7 +111,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 AUTH_USER_MODEL = "accounts.User"
 APP_VERSION = read_version(BASE_DIR)
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "backoffice:dashboard"
+LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 PASSWORD_HASHERS = [
