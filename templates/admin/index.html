@@ -17,15 +17,15 @@
         <strong>友善管理後台</strong>
         <span>給日常管理者使用的小說、章節、閱讀者與工具入口。</span>
     </a>
-    <a class="cr-admin-card" href="{% url 'admin-watermark-extract' %}">
+    <a class="cr-admin-card" href="{% url 'backoffice:watermark-extract' %}">
         <strong>Blind Watermark 提取</strong>
         <span>上傳原圖、截圖或長截圖，執行 blind watermark 追查。</span>
     </a>
-    <a class="cr-admin-card" href="{% url 'admin-visible-watermark-extract' %}">
+    <a class="cr-admin-card" href="{% url 'backoffice:visible-watermark-extract' %}">
         <strong>可見浮水印提取</strong>
         <span>先做影像顯影，再以 OCR 解析 reader_id 與日期。</span>
     </a>
-    <a class="cr-admin-card" href="{% url 'admin-anti7ocr-diagnostics' %}">
+    <a class="cr-admin-card" href="{% url 'backoffice:anti7ocr-diagnostics' %}">
         <strong>anti7ocr 診斷</strong>
         <span>產生示範圖，並直接查看 OCR 與 CER 結果。</span>
     </a>

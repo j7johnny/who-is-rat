@@ -97,7 +97,7 @@ class ChapterAdmin(admin.ModelAdmin):
 
     @admin.display(description="快速發布")
     def publish_link(self, obj: Chapter):
-        return format_html('<a class="button" href="{}">立即發布</a>', reverse("admin-chapter-publish", args=[obj.pk]))
+        return format_html('<a class="button" href="{}">立即發布</a>', reverse("backoffice:chapter-publish", args=[obj.pk]))
 
     @admin.action(description="發布選取章節")
     def publish_selected(self, request, queryset: QuerySet):

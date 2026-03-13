@@ -65,8 +65,8 @@
 
 {% block nav-global %}
 <a href="{% url 'backoffice:dashboard' %}" style="color: var(--header-link-color); margin-right: 12px;">友善後台</a>
-<a href="{% url 'admin-anti7ocr-diagnostics' %}" style="color: var(--header-link-color); margin-right: 12px;">anti7ocr 診斷</a>
-<a href="{% url 'admin-watermark-extract' %}" style="color: var(--header-link-color); margin-right: 12px;">Blind 提取</a>
-<a href="{% url 'admin-visible-watermark-extract' %}" style="color: var(--header-link-color); margin-right: 12px;">可見提取</a>
+<a href="{% url 'backoffice:anti7ocr-diagnostics' %}" style="color: var(--header-link-color); margin-right: 12px;">anti7ocr 診斷</a>
+<a href="{% url 'backoffice:watermark-extract' %}" style="color: var(--header-link-color); margin-right: 12px;">Blind 提取</a>
+<a href="{% url 'backoffice:visible-watermark-extract' %}" style="color: var(--header-link-color); margin-right: 12px;">可見提取</a>
 <a href="/" style="color: var(--header-link-color);">網站首頁</a>
 {% endblock %}

@@ -7,6 +7,8 @@ from library.models import Chapter, ChapterStatus, Novel, ReaderChapterGrant, Re
 
 
 def reader_has_site_access(reader: User) -> bool:
+    if reader.role == User.Role.ADMIN:
+        return True
     return ReaderSiteGrant.objects.filter(reader=reader).exists()
 
 

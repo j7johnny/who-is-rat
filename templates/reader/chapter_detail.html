@@ -1,99 +1,98 @@
 {% extends "base.html" %}
 
 {% block title %}{{ chapter.title }} — {{ chapter.novel.title }}{% endblock %}
-{% block body_class %}bg-stone-950 wir-reader-body{% endblock %}
 
-{% block layout %}
-<div x-data="readerApp()" @scroll.window="onScroll" class="min-h-screen bg-stone-950 text-stone-300">
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-stone-50 to-amber-50/30"
+     x-data="readerApp()" @scroll.window="onScroll">
 
   <!-- Progress bar -->
-  <div class="fixed top-0 inset-x-0 z-50 h-0.5 bg-stone-800">
+  <div class="fixed top-0 inset-x-0 z-50 h-0.5 bg-stone-200">
     <div class="h-full bg-brand-500 transition-all duration-150" :style="'width:'+scrollPct+'%'"></div>
   </div>
 
-  <!-- Floating header — auto-hide on scroll -->
-  <header class="fixed top-0 inset-x-0 z-40 transition-transform duration-300"
+  <!-- Header — auto-hide on scroll -->
+  <header class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/80 backdrop-blur-md transition-transform duration-300"
           :class="headerHidden ? '-translate-y-full' : 'translate-y-0'">
-    <div class="bg-gradient-to-b from-stone-950 via-stone-950/95 to-transparent pt-2 pb-8 px-4">
-      <div class="max-w-2xl mx-auto flex items-center justify-between gap-3">
-        <div class="min-w-0 flex-1">
-          <p class="text-xs text-stone-500 truncate">{{ chapter.novel.title }}</p>
-          <h1 class="text-sm font-medium text-stone-200 truncate">{{ chapter.title }}</h1>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a href="{{ desktop_switch_url }}"
-             class="px-2.5 py-1 rounded-md text-xs transition-colors
-                    {% if device_profile == 'desktop' %}bg-brand-500/20 text-brand-400{% else %}text-stone-500 hover:text-stone-300{% endif %}">桌機</a>
-          <a href="{{ mobile_switch_url }}"
-             class="px-2.5 py-1 rounded-md text-xs transition-colors
-                    {% if device_profile == 'mobile' %}bg-brand-500/20 text-brand-400{% else %}text-stone-500 hover:text-stone-300{% endif %}">手機</a>
-          <span class="text-stone-600 text-xs mx-1">|</span>
-          <a href="{{ novel_detail_url }}" class="text-stone-500 hover:text-stone-300 text-xs">章節目錄</a>
-        </div>
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <a href="{{ novel_detail_url }}" class="text-xs text-stone-500 hover:text-brand-600 transition truncate block">
+          ← {{ chapter.novel.title }}
+        </a>
+        <h1 class="text-sm font-semibold text-stone-800 truncate">{{ chapter.title }}</h1>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="{{ desktop_switch_url }}"
+           class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors
+                  {% if device_profile == 'desktop' %}bg-brand-100 text-brand-700{% else %}text-stone-500 hover:text-brand-600{% endif %}">桌機</a>
+        <a href="{{ mobile_switch_url }}"
+           class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors
+                  {% if device_profile == 'mobile' %}bg-brand-100 text-brand-700{% else %}text-stone-500 hover:text-brand-600{% endif %}">手機</a>
       </div>
     </div>
   </header>
 
   <!-- Chapter navigation (top) -->
-  <div class="max-w-2xl mx-auto px-4 pt-16 pb-4 flex justify-center gap-3">
+  <div class="max-w-3xl mx-auto px-4 pt-5 pb-3 flex justify-center gap-2.5">
     {% if previous_chapter %}
     <a href="{% url 'reader:chapter-detail' previous_chapter.id %}"
-       class="px-4 py-2 rounded-lg bg-stone-800/60 text-stone-400 text-sm hover:bg-stone-800 hover:text-stone-200 transition-colors">
+       class="px-4 py-2 rounded-lg bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors shadow-sm">
       ← 上一章
     </a>
     {% endif %}
     <a href="{{ novel_detail_url }}"
-       class="px-4 py-2 rounded-lg bg-stone-800/60 text-stone-400 text-sm hover:bg-stone-800 hover:text-stone-200 transition-colors">
+       class="px-4 py-2 rounded-lg bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors shadow-sm">
       目錄
     </a>
     {% if next_chapter %}
     <a href="{% url 'reader:chapter-detail' next_chapter.id %}"
-       class="px-4 py-2 rounded-lg bg-stone-800/60 text-stone-400 text-sm hover:bg-stone-800 hover:text-stone-200 transition-colors">
+       class="px-4 py-2 rounded-lg bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors shadow-sm">
       下一章 →
     </a>
     {% endif %}
   </div>
 
   <!-- Page stream -->
-  <div class="max-w-2xl mx-auto" id="page-stream"
+  <div class="max-w-3xl mx-auto px-2 sm:px-4" id="page-stream"
        @contextmenu.prevent @dragstart.prevent>
     <!-- Pages injected by JS -->
   </div>
+  <div id="page-sentinel" aria-hidden="true"></div>
 
   <!-- Loading progress -->
-  <div id="page-progress" class="py-8 text-center" x-show="!allLoaded">
-    <div class="wir-spinner mx-auto mb-3"></div>
-    <p class="text-sm text-stone-500" id="progress-text">正在準備頁面…</p>
+  <div id="page-progress" class="py-8 text-center">
+    <div class="inline-block w-6 h-6 border-2 border-brand-300 border-t-brand-600 rounded-full animate-spin mb-3"></div>
+    <p class="text-sm text-stone-500" id="progress-text">章節內容載入中…</p>
   </div>
 
   <!-- Chapter navigation (bottom) -->
-  <div class="max-w-2xl mx-auto px-4 py-8 flex justify-center gap-3">
+  <div class="max-w-3xl mx-auto px-4 py-8 flex justify-center gap-2.5">
     {% if previous_chapter %}
     <a href="{% url 'reader:chapter-detail' previous_chapter.id %}"
-       class="px-5 py-2.5 rounded-lg bg-stone-800 text-stone-300 text-sm font-medium hover:bg-stone-700 transition-colors">
+       class="px-5 py-2.5 rounded-lg bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors shadow-sm">
       ← 上一章
     </a>
     {% endif %}
     <a href="{{ novel_detail_url }}"
-       class="px-5 py-2.5 rounded-lg bg-stone-800 text-stone-300 text-sm font-medium hover:bg-stone-700 transition-colors">
+       class="px-5 py-2.5 rounded-lg bg-white border border-stone-200 text-stone-600 text-sm font-medium hover:border-brand-300 hover:text-brand-600 transition-colors shadow-sm">
       回章節目錄
     </a>
     {% if next_chapter %}
     <a href="{% url 'reader:chapter-detail' next_chapter.id %}"
-       class="px-5 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-500 transition-colors">
+       class="px-5 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-500 transition-colors shadow-sm">
       下一章 →
     </a>
     {% endif %}
   </div>
 
   <!-- Footer -->
-  <div class="text-center py-4 text-xs text-stone-700">
-    僅供授權閱讀使用 · Who-Is-Rat v{{ app_version }}
+  <div class="text-center py-4 text-xs text-stone-400">
+    僅供授權閱讀使用 · Who-Is-Rat
   </div>
 </div>
-{% endblock %}
 
 {{ page_assets|json_script:"chapter-page-assets" }}
+{% endblock %}
 
 {% block scripts %}
 <script>
@@ -101,99 +100,145 @@ function readerApp() {
   return {
     scrollPct: 0,
     headerHidden: false,
-    allLoaded: false,
     _lastY: 0,
     onScroll() {
-      const y = window.scrollY;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      var y = window.scrollY;
+      var max = document.documentElement.scrollHeight - window.innerHeight;
       this.scrollPct = max > 0 ? Math.min(100, (y / max) * 100) : 100;
-      this.headerHidden = y > 120 && y > this._lastY;
+      this.headerHidden = y > 100 && y > this._lastY;
       this._lastY = y;
     }
   };
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-  const stream = document.getElementById("page-stream");
-  const progressEl = document.getElementById("page-progress");
-  const progressText = document.getElementById("progress-text");
-  const assets = JSON.parse(document.getElementById("chapter-page-assets").textContent);
-  const total = assets.length;
+  var stream = document.getElementById("page-stream");
+  var sentinel = document.getElementById("page-sentinel");
+  var progressEl = document.getElementById("page-progress");
+  var progressText = document.getElementById("progress-text");
+  var pageAssets = JSON.parse(document.getElementById("chapter-page-assets").textContent);
 
-  if (total === 0) { progressText.textContent = "此章節尚無頁面"; return; }
+  var BATCH = 4;
+  var EAGER = 4;
+  var MAX_RETRY = 3;
+  var RETRY_DELAY = 2000;
+  var total = pageAssets.length;
+  var renderedCount = 0;
+  var loadedCount = 0;
+  var pumpScheduled = false;
 
-  // Create skeleton placeholders immediately (correct aspect ratio)
-  const slots = [];
-  for (let i = 0; i < total; i++) {
-    const a = assets[i];
-    const w = document.createElement("div");
-    w.className = "relative";
-    const ratio = ((a.height / a.width) * 100).toFixed(2);
-    w.innerHTML = '<div class="page-skel bg-stone-900 w-full animate-pulse" style="padding-bottom:' + ratio + '%">' +
-      '<div class="absolute inset-0 flex items-center justify-center text-stone-700 text-sm">第 ' + (i+1) + ' / ' + total + ' 頁</div></div>';
-    stream.appendChild(w);
-    slots.push({ el: w, asset: a, ok: false, tries: 0 });
+  if (total === 0) {
+    progressText.textContent = "此章節尚無頁面";
+    return;
   }
 
-  let done = 0;
-  function progress() {
-    if (done >= total) {
-      if (progressEl) progressEl.style.display = "none";
-      try { document.querySelector("[x-data]").__x.$data.allLoaded = true; } catch(e) {}
+  function updateProgress() {
+    if (loadedCount >= renderedCount && renderedCount >= total) {
+      progressEl.style.display = "none";
+    } else if (renderedCount < total) {
+      progressText.textContent = "已載入 " + loadedCount + " / " + total + " 頁，向下捲動載入更多";
     } else {
-      progressText.textContent = "已載入 " + done + " / " + total + " 頁";
+      progressText.textContent = "圖片載入中… " + loadedCount + " / " + total + " 頁";
     }
   }
 
-  // Sequential loader: one page at a time to avoid server congestion
-  // (each page may trigger on-demand watermark generation)
-  const MAX_RETRY = 6, RETRY_BASE = 1500;
-  let cur = 0;
-
-  function next() {
-    if (cur >= total) return;
-    const idx = cur;
-    const s = slots[idx];
-    cur++;
-
-    const img = new Image();
-    img.className = "wir-reader-page w-full";
-    img.alt = "第 " + (idx+1) + " 頁";
-    img.decoding = "async";
-    img.draggable = false;
-    img.width = s.asset.width;
-    img.height = s.asset.height;
-
-    // Update skeleton text
-    const label = s.el.querySelector(".page-skel div");
-    if (label) label.textContent = "正在載入第 " + (idx+1) + " 頁…";
-
-    img.onload = function() {
-      s.el.innerHTML = "";
-      s.el.appendChild(img);
-      s.ok = true;
-      done++;
-      progress();
-      next();
-    };
-    img.onerror = function() {
-      s.tries++;
-      if (s.tries <= MAX_RETRY) {
-        if (label) label.textContent = "第 " + (idx+1) + " 頁準備中…（" + s.tries + "/" + MAX_RETRY + "）";
-        cur--; // re-queue
-        setTimeout(next, RETRY_BASE * Math.min(s.tries, 3));
-      } else {
-        s.el.innerHTML = '<div class="bg-stone-900 rounded-lg py-6 text-center text-stone-600 text-sm">第 ' + (idx+1) + ' 頁載入失敗</div>';
-        done++;
-        progress();
-        next();
-      }
-    };
-    img.src = s.asset.url;
+  function isNearBottom() {
+    var threshold = Math.max(window.innerHeight * 1.25, 800);
+    return window.scrollY + window.innerHeight + threshold >= document.documentElement.scrollHeight;
   }
 
-  progressText.textContent = "正在載入第 1 / " + total + " 頁…";
-  next();
+  function renderBatch() {
+    if (!stream || renderedCount >= total) {
+      updateProgress();
+      return false;
+    }
+    var limit = Math.min(renderedCount + BATCH, total);
+    var frag = document.createDocumentFragment();
+
+    for (var i = renderedCount; i < limit; i++) {
+      (function(index) {
+        var asset = pageAssets[index];
+        var shell = document.createElement("div");
+        shell.className = "mb-1";
+
+        var img = document.createElement("img");
+        img.className = "w-full rounded-sm bg-stone-100";
+        img.alt = "第 " + (index + 1) + " 頁";
+        img.decoding = "async";
+        img.loading = index < EAGER ? "eager" : "lazy";
+        img.draggable = false;
+        img.width = asset.width;
+        img.height = asset.height;
+        img.dataset.pageIndex = String(index + 1);
+        img.dataset.retries = "0";
+        img.src = asset.url;
+
+        img.addEventListener("load", function() {
+          if (img.dataset.settled) return;
+          img.dataset.settled = "1";
+          img.classList.remove("bg-stone-100");
+          loadedCount++;
+          updateProgress();
+          pumpMore();
+        });
+
+        img.addEventListener("error", function() {
+          var retries = parseInt(img.dataset.retries, 10);
+          if (retries < MAX_RETRY) {
+            img.dataset.retries = String(retries + 1);
+            setTimeout(function() {
+              img.src = asset.url + (asset.url.indexOf("?") >= 0 ? "&" : "?") + "_r=" + (retries + 1);
+            }, RETRY_DELAY * (retries + 1));
+            return;
+          }
+          if (img.dataset.settled) return;
+          img.dataset.settled = "1";
+          shell.innerHTML = '<div class="py-6 text-center text-sm text-stone-400 bg-stone-100 rounded">第 ' + (index + 1) + ' 頁載入失敗</div>';
+          loadedCount++;
+          updateProgress();
+          pumpMore();
+        });
+
+        shell.appendChild(img);
+        frag.appendChild(shell);
+      })(i);
+    }
+
+    stream.appendChild(frag);
+    renderedCount = limit;
+    updateProgress();
+    return true;
+  }
+
+  function pumpMore() {
+    if (pumpScheduled) return;
+    pumpScheduled = true;
+    requestAnimationFrame(function() {
+      pumpScheduled = false;
+      var batches = 0;
+      while (renderedCount < total && isNearBottom() && batches < 3) {
+        if (!renderBatch()) break;
+        batches++;
+      }
+    });
+  }
+
+  // Initial render
+  renderBatch();
+  if (renderedCount < EAGER) renderBatch();
+  updateProgress();
+  pumpMore();
+
+  // Scroll-triggered loading
+  window.addEventListener("scroll", pumpMore, { passive: true });
+  window.addEventListener("resize", pumpMore);
+
+  // IntersectionObserver fallback
+  if (sentinel && typeof IntersectionObserver !== "undefined") {
+    new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) pumpMore(); });
+    }, { rootMargin: "1200px 0px 1200px 0px" }).observe(sentinel);
+  }
 
   // Anti-copy
   document.addEventListener("keydown", function(e) {

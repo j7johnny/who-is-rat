@@ -103,7 +103,7 @@ class TestChapterDetail:
 
 @pytest.mark.django_db
 class TestAdminPreviewAccess:
-    """Admin must be able to browse all reader pages for preview."""
+    """Admin must be able to browse all reader pages without explicit grants."""
 
     def test_admin_can_view_library(self):
         admin = AdminUserFactory(password="TestPass123!")
@@ -112,24 +112,32 @@ class TestAdminPreviewAccess:
         response = client.get(reverse("reader:library"))
         assert response.status_code == 200
 
-    def test_admin_can_view_novel_detail(self):
+    def test_admin_can_view_novel_detail_without_grant(self):
         admin = AdminUserFactory(password="TestPass123!")
         novel = NovelFactory()
         PublishedChapterFactory(novel=novel)
-        ReaderSiteGrantFactory(reader=admin)
         client = Client()
         client.login(username=admin.username, password="TestPass123!")
         response = client.get(reverse("reader:novel-detail", args=[novel.id]))
         assert response.status_code == 200
 
-    def test_admin_can_view_chapter(self):
+    def test_admin_can_view_chapter_without_grant(self):
         admin = AdminUserFactory(password="TestPass123!")
         chapter = PublishedChapterFactory()
-        ReaderChapterGrantFactory(reader=admin, chapter=chapter)
         client = Client()
         client.login(username=admin.username, password="TestPass123!")
         response = client.get(reverse("reader:chapter-detail", args=[chapter.id]))
         assert response.status_code == 200
+
+    def test_admin_sees_all_novels_in_library(self):
+        admin = AdminUserFactory(password="TestPass123!")
+        novel = NovelFactory()
+        PublishedChapterFactory(novel=novel)
+        client = Client()
+        client.login(username=admin.username, password="TestPass123!")
+        response = client.get(reverse("reader:library"))
+        assert response.status_code == 200
+        assert novel.title in response.content.decode()
 
 
 @pytest.mark.django_db
