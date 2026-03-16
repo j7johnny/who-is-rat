@@ -58,7 +58,6 @@ class ChapterAdminForm(forms.ModelForm):
         model = Chapter
         fields = "__all__"
         help_texts = {
-            "slug": "章節代稱主要用在後台與資料唯一性，不直接顯示在讀者閱讀網址。",
             "sort_order": "章節在同一本小說中的排序。",
             "anti_ocr_preset": "若未指定，發布時會自動使用全站預設的 anti7ocr 設定。",
         }

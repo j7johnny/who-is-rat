@@ -76,14 +76,14 @@ class ChapterAdmin(admin.ModelAdmin):
     form = ChapterAdminForm
     list_display = ("title", "novel", "status", "sort_order", "published_at", "publish_link")
     list_filter = ("status", "novel")
-    search_fields = ("title", "novel__title", "content", "slug")
+    search_fields = ("title", "novel__title", "content")
     autocomplete_fields = ("novel", "anti_ocr_preset", "current_version")
     actions = ("publish_selected",)
     fieldsets = (
         (
             "章節內容",
             {
-                "fields": ("novel", "title", "slug", "sort_order", "status", "content"),
+                "fields": ("novel", "title", "sort_order", "status", "content"),
                 "description": "正式發布時會先完成桌機與手機兩套基底圖，完成後才讓讀者看到。",
             },
         ),

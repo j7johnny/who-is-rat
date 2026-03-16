@@ -227,17 +227,15 @@ class NovelBackofficeForm(forms.ModelForm):
 class ChapterBackofficeForm(forms.ModelForm):
     class Meta:
         model = Chapter
-        fields = ["novel", "title", "slug", "sort_order", "anti_ocr_preset", "content"]
+        fields = ["novel", "title", "sort_order", "anti_ocr_preset", "content"]
         labels = {
             "novel": "所屬小說",
             "title": "章節名稱",
-            "slug": "章節代稱",
             "sort_order": "排序",
             "anti_ocr_preset": "anti7ocr 設定",
             "content": "章節全文",
         }
         help_texts = {
-            "slug": "主要用在後台與資料唯一性，不直接顯示在讀者閱讀網址。",
             "sort_order": "決定章節在小說中的前後順序。",
             "anti_ocr_preset": "若未選擇，發布時會自動使用全站預設。",
             "content": "發布時會先產生桌機與手機兩套 anti7ocr 基底圖，完成後才正式對讀者開放。",

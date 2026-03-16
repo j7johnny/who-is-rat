@@ -123,7 +123,6 @@ class CustomFontUpload(models.Model):
 class Chapter(models.Model):
     novel = models.ForeignKey(Novel, on_delete=models.CASCADE, related_name="chapters", verbose_name="小說")
     title = models.CharField("章節名稱", max_length=200)
-    slug = models.SlugField("章節代稱", max_length=220, allow_unicode=True)
     sort_order = models.PositiveIntegerField("排序", default=1)
     content = models.TextField("章節全文", blank=True)
     status = models.CharField("狀態", max_length=20, choices=ChapterStatus.choices, default=ChapterStatus.DRAFT)
@@ -151,14 +150,7 @@ class Chapter(models.Model):
         ordering = ["novel__title", "sort_order", "id"]
         verbose_name = "章節"
         verbose_name_plural = "章節"
-        constraints = [
-            models.UniqueConstraint(fields=["novel", "slug"], name="unique_chapter_slug_per_novel"),
-        ]
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.title, allow_unicode=True)
-        super().save(*args, **kwargs)
+        constraints = []
 
     def __str__(self) -> str:
         return f"{self.novel.title} / {self.title}"

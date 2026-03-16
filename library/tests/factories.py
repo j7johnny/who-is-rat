@@ -41,7 +41,6 @@ class ChapterFactory(factory.django.DjangoModelFactory):
 
     novel = factory.SubFactory(NovelFactory)
     title = factory.Sequence(lambda n: f"第 {n} 章")
-    slug = factory.Sequence(lambda n: f"chapter-{n}")
     sort_order = factory.Sequence(lambda n: n)
     content = "這是章節的測試內容，包含足夠的中文字數進行測試。" * 5
     status = ChapterStatus.DRAFT
