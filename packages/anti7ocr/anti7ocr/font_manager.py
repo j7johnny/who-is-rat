@@ -8,7 +8,7 @@ from typing import Iterable
 from PIL import ImageFont
 
 
-FONT_EXTENSIONS = {".ttf", ".otf", ".ttc"}
+FONT_EXTENSIONS = {".ttf", ".otf", ".ttc", ".woff2"}
 
 
 class FontManager:

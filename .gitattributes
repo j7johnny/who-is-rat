@@ -1,0 +1,4 @@
+Fonts/*.ttc filter=lfs diff=lfs merge=lfs -text
+Fonts/*.ttf filter=lfs diff=lfs merge=lfs -text
+Fonts/*.otf filter=lfs diff=lfs merge=lfs -text
+Fonts/*.woff2 filter=lfs diff=lfs merge=lfs -text
