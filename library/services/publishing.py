@@ -5,8 +5,10 @@ from datetime import date, timedelta
 import os
 from pathlib import Path
 import tempfile
+import threading
 
 from django.conf import settings
+from django import db
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -37,10 +39,24 @@ from .watermark import build_watermark_payload, embed_watermark
 daily_page_layout_version = "v9"
 
 
+def _run_in_background_thread(func, *args):
+    """Run a callable in a daemon thread, closing DB connections afterward."""
+    def _wrapper():
+        try:
+            func(*args)
+        finally:
+            db.connections.close_all()
+    thread = threading.Thread(target=_wrapper, daemon=True)
+    thread.start()
+    return thread
+
+
 def _maybe_enqueue(task, *args, eager_mode: str = "skip"):
     if settings.CELERY_TASK_ALWAYS_EAGER:
         if eager_mode == "sync":
             task(*args)
+        elif eager_mode == "thread":
+            _run_in_background_thread(task, *args)
         return
     with contextlib.suppress(Exception):
         task.delay(*args)
@@ -143,8 +159,7 @@ def schedule_chapter_publish(chapter: Chapter, actor: User | None = None, reques
     from library.tasks import run_chapter_publish_job_task
 
     if settings.CELERY_TASK_ALWAYS_EAGER:
-        run_chapter_publish_job_task(job.id)
-        job.refresh_from_db()
+        _run_in_background_thread(run_chapter_publish_job_task, job.id)
     else:
         async_result = run_chapter_publish_job_task.delay(job.id)
         ChapterPublishJob.objects.filter(pk=job.pk).update(celery_task_id=async_result.id)
@@ -318,7 +333,7 @@ def ensure_daily_bundle(
             for_date.isoformat(),
             device_profile,
             2,
-            eager_mode="skip",
+            eager_mode="thread",
         )
 
     return {

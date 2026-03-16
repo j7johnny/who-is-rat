@@ -17,6 +17,7 @@ PRESET_NAME_CHOICES = (
     ("tw_balanced", "tw_balanced"),
     ("tw_aggressive", "tw_aggressive"),
     ("tw_hardened", "tw_hardened"),
+    ("friendly_read", "friendly_read"),
 )
 
 

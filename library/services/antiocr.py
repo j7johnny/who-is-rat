@@ -84,6 +84,32 @@ def get_default_preset() -> AntiOcrPreset:
             "mobile_config": build_default_mobile_config(),
         },
     )
+    ensure_friendly_read_preset()
+    return preset
+
+
+def ensure_friendly_read_preset() -> AntiOcrPreset:
+    """Create the FriendlyRead preset if it doesn't exist (all anti-OCR off)."""
+    preset, _ = AntiOcrPreset.objects.get_or_create(
+        base_preset_name="friendly_read",
+        defaults={
+            "name": "FriendlyRead（純閱讀，無防護）",
+            "is_default": False,
+            "shared_config": {
+                "text": {
+                    "enable_char_to_pinyin": False,
+                    "char_to_pinyin_ratio": 0.0,
+                    "enable_char_reverse": False,
+                    "char_reverse_ratio": 0.0,
+                },
+                "background": {"enable": False},
+                "fragment": {"enable": False},
+                "perturb": {"enable": False, "adversarial_watermark_enable": False},
+            },
+            "desktop_config": build_default_desktop_config(),
+            "mobile_config": build_default_mobile_config(),
+        },
+    )
     return preset
 
 

@@ -161,12 +161,12 @@
         const r = await fetch(url, { credentials: "same-origin", cache: "no-store" });
         const d = await r.json();
 
-        if (!d.exists || d.status === "completed" || d.status === "failed") {
+        if (!d.exists || d.status === "succeeded" || d.status === "failed") {
           clearInterval(interval);
           activeJobs--;
           if (activeJobs <= 0 && indicator) indicator.classList.add("hidden");
 
-          if (d.status === "completed") {
+          if (d.status === "succeeded") {
             // Update UI to show completed
             progressEl.innerHTML = '<span class="text-emerald-600">發布完成</span>';
             progressEl.style.display = "";

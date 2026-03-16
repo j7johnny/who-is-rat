@@ -196,6 +196,32 @@ PRESETS: dict[str, dict] = {
             "watermark_opacity": 20,
         },
     },
+    # ── FriendlyRead: all anti-OCR features disabled, clean readable output ──
+    "friendly_read": {
+        "text": {
+            "enable_char_to_pinyin": False,
+            "char_to_pinyin_ratio": 0.0,
+            "enable_char_reverse": False,
+            "char_reverse_ratio": 0.0,
+        },
+        "layout": {"direction": "horizontal"},
+        "background": {"enable": False, "density": 0.0},
+        "fragment": {
+            "enable": False,
+            "stroke_fragmentation_prob": 0.0,
+            "closed_structure_break_prob": 0.0,
+        },
+        "perturb": {
+            "enable": False,
+            "edge_jitter_strength": 0.0,
+            "edge_brightness_noise": 0,
+            "local_contrast_noise": 0.0,
+            "local_contrast_patches": 0,
+            "adversarial_watermark_enable": False,
+            "watermark_opacity": 0,
+            "watermark_density": 0.0,
+        },
+    },
     "tw_vertical_aggressive": {
         "text": {"char_to_pinyin_ratio": 0.14, "char_reverse_ratio": 0.14},
         "layout": {
