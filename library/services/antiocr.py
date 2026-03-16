@@ -29,7 +29,7 @@ from .storage import delete_relative_path, ensure_parent, media_relative
 
 cjk_char_pattern = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 horizontal_space_pattern = re.compile(r"[ \t]+")
-base_page_layout_version = "v5"
+base_page_layout_version = "v6"
 
 
 @dataclass(frozen=True)

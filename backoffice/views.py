@@ -360,7 +360,7 @@ def _render_chapter_editor(request: HttpRequest, chapter: Chapter | None = None)
                     messages.success(request, f"章節 {chapter.title} 已完成發布。")
         else:
             messages.success(request, "章節草稿已儲存。")
-        return redirect("backoffice:chapter-detail", chapter_id=chapter.id)
+        return redirect("backoffice:novel-detail", novel_id=chapter.novel_id)
 
     active_publish_job = _latest_publish_job(chapter.id) if chapter is not None else None
     return render_manage(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable
 from datetime import date, timedelta
 import os
 from pathlib import Path
@@ -36,7 +37,7 @@ from .storage import delete_relative_path, ensure_parent, media_relative
 from .visible_watermark import build_visible_watermark_payload, embed_visible_watermark
 from .watermark import build_watermark_payload, embed_watermark
 
-daily_page_layout_version = "v9"
+daily_page_layout_version = "v10"
 
 
 def _run_in_background_thread(func, *args):
@@ -174,7 +175,12 @@ def schedule_chapter_publish(chapter: Chapter, actor: User | None = None, reques
     return job
 
 
-def render_base_pages_for_version(chapter_version: ChapterVersion, device_profile: str, force: bool = False) -> list[BasePage]:
+def render_base_pages_for_version(
+    chapter_version: ChapterVersion,
+    device_profile: str,
+    force: bool = False,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> list[BasePage]:
     if force:
         delete_queryset_files(BasePage.objects.filter(chapter_version=chapter_version, device_profile=device_profile))
 
@@ -183,12 +189,15 @@ def render_base_pages_for_version(chapter_version: ChapterVersion, device_profil
         chapter_version.preset_snapshot,
         device_profile,
     )
+    total = len(rendered_pages)
 
     pages: list[BasePage] = []
     try:
         for index, (image, char_count) in enumerate(rendered_pages, start=1):
             pages.append(save_base_page_image(chapter_version, device_profile, index, image, char_count))
             image.close()
+            if progress_callback:
+                progress_callback(index, total)
     finally:
         for image, _ in rendered_pages[len(pages):]:
             image.close()

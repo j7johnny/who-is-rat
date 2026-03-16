@@ -146,7 +146,7 @@ def _green_bits() -> int:
 
 def _overlay_opacity() -> int:
     """Faint alpha overlay opacity (0-255). Low values survive JPEG better."""
-    return max(0, min(255, int(getattr(settings, "VISIBLE_WATERMARK_OVERLAY_OPACITY", 12))))
+    return max(0, min(255, int(getattr(settings, "VISIBLE_WATERMARK_OVERLAY_OPACITY", 22))))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -239,7 +239,7 @@ def _apply_alpha_overlay(image: np.ndarray, grayscale_mask: np.ndarray) -> np.nd
     # Darken slightly where watermark text exists
     output = image.astype(np.float32)
     for c in range(3):
-        output[:, :, c] = output[:, :, c] * (1.0 - alpha * 0.35)
+        output[:, :, c] = output[:, :, c] * (1.0 - alpha * 0.50)
 
     return np.clip(output, 0, 255).astype(np.uint8)
 
@@ -317,10 +317,10 @@ def _extract_luminance_overlay(image: np.ndarray) -> np.ndarray:
     diff = blur - gray  # Positive where darkened (watermark overlay)
 
     # Normalize to [0, 255]
-    diff = np.clip(diff * 8.0, 0, 255).astype(np.uint8)
+    diff = np.clip(diff * 12.0, 0, 255).astype(np.uint8)
 
     # CLAHE to enhance contrast
-    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
+    clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(diff)
 
     return enhanced
@@ -342,8 +342,8 @@ def _build_reveal_variants(image: np.ndarray):
     # ── LSB enhanced pipeline ──
     base = cv2.resize(combined, None, fx=3.2, fy=3.2, interpolation=cv2.INTER_NEAREST)
     base = cv2.GaussianBlur(base, (0, 0), sigmaX=0.8)
-    base = cv2.createCLAHE(clipLimit=3.4, tileGridSize=(8, 8)).apply(base)
-    boosted = cv2.convertScaleAbs(base, alpha=2.6, beta=-18)
+    base = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8)).apply(base)
+    boosted = cv2.convertScaleAbs(base, alpha=3.0, beta=-20)
     binary_dark = cv2.adaptiveThreshold(
         boosted, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV, 31, 6,

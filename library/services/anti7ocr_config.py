@@ -102,11 +102,11 @@ def build_default_desktop_config() -> dict[str, Any]:
         "canvas": {
             "width": 600,
             "height": 860,
-            "margin": 20,
+            "margin": 16,
             "supersample": 2,
         },
         "layout": {
-            "max_chars_per_line": 22,
+            "max_chars_per_line": 26,
             "line_height_multiplier": 1.45,
             "micro_kerning_jitter": 0.8,
             "baseline_jitter": 0.8,
@@ -127,11 +127,11 @@ def build_default_mobile_config() -> dict[str, Any]:
         "canvas": {
             "width": 420,
             "height": 760,
-            "margin": 16,
+            "margin": 12,
             "supersample": 2,
         },
         "layout": {
-            "max_chars_per_line": 15,
+            "max_chars_per_line": 22,
             "line_height_multiplier": 1.50,
             "micro_kerning_jitter": 0.6,
             "baseline_jitter": 0.6,

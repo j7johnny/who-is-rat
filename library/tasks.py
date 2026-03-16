@@ -55,22 +55,30 @@ def run_chapter_publish_job_task(self, publish_job_id: int) -> int:
     _update_publish_job(
         job,
         status=ChapterPublishJob.Status.RUNNING,
-        progress_percent=10,
-        step_label="Rendering desktop base pages",
+        progress_percent=5,
+        step_label="開始產製桌機版基底圖…",
         started_at=timezone.now(),
         celery_task_id=self.request.id or job.celery_task_id,
     )
 
-    try:
-        render_base_pages_for_version(job.chapter_version, "desktop", force=True)
-        if _is_job_cancel_requested(job.id):
-            raise RuntimeError("PUBLISH_JOB_CANCELED")
-        _update_publish_job(job, progress_percent=55, step_label="Rendering mobile base pages")
+    def _desktop_progress(current: int, total: int) -> None:
+        pct = 5 + int(40 * current / max(total, 1))
+        _update_publish_job(job, progress_percent=pct, step_label=f"桌機版基底圖 {current}/{total} 頁")
 
-        render_base_pages_for_version(job.chapter_version, "mobile", force=True)
+    def _mobile_progress(current: int, total: int) -> None:
+        pct = 50 + int(40 * current / max(total, 1))
+        _update_publish_job(job, progress_percent=pct, step_label=f"手機版基底圖 {current}/{total} 頁")
+
+    try:
+        render_base_pages_for_version(job.chapter_version, "desktop", force=True, progress_callback=_desktop_progress)
         if _is_job_cancel_requested(job.id):
             raise RuntimeError("PUBLISH_JOB_CANCELED")
-        _update_publish_job(job, progress_percent=90, step_label="Finalizing publish")
+        _update_publish_job(job, progress_percent=50, step_label="開始產製手機版基底圖…")
+
+        render_base_pages_for_version(job.chapter_version, "mobile", force=True, progress_callback=_mobile_progress)
+        if _is_job_cancel_requested(job.id):
+            raise RuntimeError("PUBLISH_JOB_CANCELED")
+        _update_publish_job(job, progress_percent=92, step_label="正在完成發布…")
 
         with transaction.atomic():
             finalize_chapter_publish(job.chapter, job.chapter_version)
@@ -79,7 +87,7 @@ def run_chapter_publish_job_task(self, publish_job_id: int) -> int:
             job,
             status=ChapterPublishJob.Status.SUCCEEDED,
             progress_percent=100,
-            step_label="Publish completed",
+            step_label="發布完成",
             finished_at=timezone.now(),
         )
         log_event(

@@ -20,7 +20,7 @@ DEFAULT_CONFIG: dict = {
         "width": 1280,
         "height": 720,
         "margin": 24,
-        "background_color": [255, 255, 255],
+        "background_color": [254, 249, 241],
         "text_color": [20, 20, 20],
         "supersample": 2,
         "dpi": 96,
